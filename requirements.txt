@@ -1,3 +1,6 @@
+# To use paraquet file
+pyarrow
+
 # Data handling
 pandas
 numpy
