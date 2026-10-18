@@ -1,4 +1,3 @@
-"""Feature engineering for D2 (features_v1.parquet). Owner: Gokul."""
 import numpy as np
 import pandas as pd
 
@@ -6,6 +5,27 @@ HOUR = pd.Timedelta(hours=1)
 TARGET_H = [24, 48]          # forecast horizons (hours ahead)
 LAGS_H = [1, 6, 12, 24, 48]  # how far back the lag features look
 ROLL_H = [6, 12, 24]         # rolling-mean window sizes (hours)
+
+FINAL_COLUMNS = [
+    # keys
+    "StationId", "City", "Datetime",
+    # targets
+    "Target_AQI_24h", "Target_AQI_48h",
+    # labels
+    "split", "is_lockdown",
+    # current values
+    "AQI", "PM2.5", "PM10", "NO2", "NOx", "NH3", "CO", "SO2", "O3",
+    # weather
+    "Temperature_C", "Relative_Humidity_pct", "Wind_Speed_kmh",
+    "Wind_Dir_sin", "Wind_Dir_cos",
+    # calendar
+    "Hour_sin", "Hour_cos", "DayOfWeek_sin", "DayOfWeek_cos",
+    "Month_sin", "Month_cos", "DayOfYear",
+    # lags
+    "AQI_lag_1h", "AQI_lag_6h", "AQI_lag_12h", "AQI_lag_24h", "AQI_lag_48h",
+    # rolling
+    "AQI_rolling_mean_6h", "AQI_rolling_mean_12h", "AQI_rolling_mean_24h",
+]
 
 
 def assert_contiguous(df: pd.DataFrame,
@@ -78,3 +98,28 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     # LAST: keep only rows where AQI is present
     out = out[out["AQI"].notna()].reset_index(drop=True)
     return out
+
+
+def select_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Keep exactly the Card 2 columns, in Card 2 order."""
+    missing = [c for c in FINAL_COLUMNS if c not in df.columns]
+    assert not missing, f"Missing columns: {missing}"
+    return df[FINAL_COLUMNS].copy()
+
+
+def leakage_test(feat: pd.DataFrame, raw: pd.DataFrame,
+                 n: int = 1000, seed: int = 42) -> None:
+    """Compare lags/targets with a direct lookup in the FULL raw table.
+
+    AQI_lag_24h must equal AQI at (Datetime - 24h); Target_AQI_24h/48h must
+    equal AQI at (Datetime + 24h/48h). NaN must match NaN.
+    """
+    sample = feat.sample(min(n, len(feat)), random_state=seed)
+    lookup = raw.set_index(["StationId", "Datetime"])["AQI"]
+    for col, hours in [("AQI_lag_24h", -24), ("Target_AQI_24h", 24), ("Target_AQI_48h", 48)]:
+        idx = pd.MultiIndex.from_arrays(
+            [sample["StationId"], sample["Datetime"] + pd.Timedelta(hours=hours)])
+        expected = lookup.reindex(idx).to_numpy()
+        ok = np.isclose(sample[col].to_numpy(dtype=float), expected.astype(float), equal_nan=True)
+        assert ok.all(), f"LEAKAGE/SHIFT ERROR in {col}: {int((~ok).sum())} of {len(ok)} rows differ"
+        print(f"PASS {col}: {len(ok):,} random rows match a direct lookup")
