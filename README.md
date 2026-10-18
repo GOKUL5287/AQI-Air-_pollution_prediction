@@ -234,6 +234,28 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## Run order (shared AQI data)
+
+The Colab workflow stores shared inputs under `AQI_DATA_DIR`; by default, local
+runs use the repository's `data/` directory. Keep the agreed D1 and D2 filenames
+inside `processed/` in that data folder.
+
+1. Install dependencies with `pip install -r requirements.txt`.
+2. Make sure D1, `processed/station_hour_merged.parquet`, is in the shared data
+   folder, then run [`notebooks/features.ipynb`](./notebooks/features.ipynb) to
+   create D2, `processed/features_v1.parquet`.
+3. Open and run [`notebooks/anand/baselines.ipynb`](./notebooks/anand/baselines.ipynb)
+   from top to bottom. Its first cell mounts Drive, sets `AQI_DATA_DIR`, and clones
+   or updates this repository. The remaining cells train and evaluate all models.
+4. The notebook writes D3 files to `processed/predictions_v1.csv` and
+   `processed/metrics_v1.csv`. It reports whether gradient boosting beats
+   persistence on the test-set MAE for each horizon. Gradient-boosting
+   predictions also include 5th/95th percentile bounds; `coverage` is the
+   fraction of targets inside those bounds.
+
+For new Colab work, start from [`notebooks/_template.ipynb`](./notebooks/_template.ipynb)
+so Drive and repository setup stays consistent.
+
 ---
 
 ## 🔑 Environment Variables

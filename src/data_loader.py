@@ -20,11 +20,12 @@ from pathlib import Path
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+DATA_DIR = Path(os.environ.get("AQI_DATA_DIR", REPO_ROOT / "data"))
 
 
 def data_dir() -> Path:
-    """Folder holding raw/, processed/ and samples/. Read at call time."""
-    return Path(os.environ.get("AQI_DATA_DIR", REPO_ROOT / "data"))
+    """Folder holding raw/, processed/ and samples/."""
+    return DATA_DIR
 
 
 def _check(path: Path) -> Path:
