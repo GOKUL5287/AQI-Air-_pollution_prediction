@@ -8,6 +8,7 @@ from src.split import LOCKDOWN_START
 
 KEYS = ["StationId", "Datetime", "horizon_h"]
 V1_MODELS = ["persistence", "hist_gradient_boosting"]
+NO_PROPHET = V1_MODELS + ["lstm"]
 
 
 def compare(predictions: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -18,7 +19,7 @@ def compare(predictions: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     return common, metrics
 
 
-def main() -> pd.DataFrame:
+def main() -> tuple[pd.DataFrame, pd.DataFrame]:
     processed = data_dir() / "processed"
     v1 = pd.read_csv(processed / "predictions_v1.csv", parse_dates=["Datetime"])
     predictions = pd.concat(
@@ -31,8 +32,11 @@ def main() -> pd.DataFrame:
     )
     common, metrics = compare(predictions)
     save_outputs(common, metrics, processed, version="v2")
-    return metrics
+    _, metrics_no_prophet = compare(predictions[predictions["model"].isin(NO_PROPHET)])
+    metrics_no_prophet.to_csv(processed / "metrics_v2_excl_prophet.csv", index=False)
+    return metrics, metrics_no_prophet
 
 
 if __name__ == "__main__":
-    print(main().to_string(index=False))
+    for table in main():
+        print(table.to_string(index=False))
