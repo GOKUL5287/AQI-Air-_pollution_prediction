@@ -1,0 +1,64 @@
+{
+  "model_name": "TerraPulse Gradient Boosting AQI Regressor",
+  "framework": "scikit-learn (HistGradientBoostingRegressor)",
+  "training_samples": 768408,
+  "test_samples": 135602,
+  "features": [
+    "PM2.5",
+    "PM10",
+    "NO2",
+    "CO",
+    "SO2",
+    "O3",
+    "Temperature_C",
+    "Relative_Humidity_pct",
+    "Wind_Speed_kmh",
+    "Hour",
+    "DayOfWeek",
+    "Month",
+    "DayOfYear"
+  ],
+  "feature_order": [
+    "PM2.5",
+    "PM10",
+    "NO2",
+    "CO",
+    "SO2",
+    "O3",
+    "Temperature_C",
+    "Relative_Humidity_pct",
+    "Wind_Speed_kmh",
+    "Hour",
+    "DayOfWeek",
+    "Month",
+    "DayOfYear"
+  ],
+  "feature_units": {
+    "PM2.5": "\u00b5g/m\u00b3",
+    "PM10": "\u00b5g/m\u00b3",
+    "NO2": "\u00b5g/m\u00b3",
+    "CO": "mg/m\u00b3",
+    "SO2": "\u00b5g/m\u00b3",
+    "O3": "\u00b5g/m\u00b3",
+    "Temperature_C": "\u00b0C",
+    "Relative_Humidity_pct": "%",
+    "Wind_Speed_kmh": "km/h",
+    "Hour": "0-23",
+    "DayOfWeek": "0-6 (Mon-Sun)",
+    "Month": "1-12",
+    "DayOfYear": "1-366"
+  },
+  "target": "AQI (Air Quality Index)",
+  "target_range": [
+    0,
+    500
+  ],
+  "metrics": {
+    "mae": 1.356768789294017,
+    "rmse": 4.3390404645340475,
+    "r2_score": 0.998848177364207
+  },
+  "preprocessing": "StandardScaler (scikit-learn)",
+  "training_date": "2026-10-16",
+  "dataset_source": "OpenAQ Ground Station Records + Open-Meteo Historical Weather (904,010 samples)"
+}

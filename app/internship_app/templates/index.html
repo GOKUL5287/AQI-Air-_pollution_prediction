@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Air Quality Index | Environmental Intelligence</title>
+  <meta name="description"
+    content="Cinematic Earth intelligence platform combining scroll-driven video, real-time AQI, ocean telemetry, and ML-powered environmental predictions.">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- FULLSCREEN CANVAS: Scroll-Driven Video Frame Scrubbing      -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="video-bg">
+    <canvas id="frame-canvas"></canvas>
+  </div>
+
+  <!-- Vignette overlay (always on) -->
+  <div class="vignette"></div>
+
+  <!-- Scene-specific gradient overlays (toggled per scene) -->
+  <div class="scene-overlay" id="overlay-space"></div>
+  <div class="scene-overlay" id="overlay-map"></div>
+  <div class="scene-overlay" id="overlay-ocean"></div>
+  <div class="scene-overlay" id="overlay-globe"></div>
+  <canvas id="cloud-effect-canvas" aria-hidden="true"></canvas>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- SCROLL CONTAINER: All scenes stack vertically              -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="scroll-root">
+
+    <!-- ─────────────────────────────────────────────────────── -->
+    <!-- SCENE 1 · FRAMES 000–035                                -->
+    <!-- Stylized Earth in space: sun, moon, birds, globe        -->
+    <!-- ─────────────────────────────────────────────────────── -->
+    <section class="scene" id="scene-hero" data-scene="space">
+      <div class="scene-inner">
+        <div class="hero-block" id="hero-block">
+          <h1 class="hero-title">
+            <span class="title-line" id="title-line-1">AIR QUALITY</span><span class="title-line title-accent"
+              id="title-line-2">INDEX</span>
+          </h1>
+          <p class="hero-tagline" id="hero-tagline">Global air quality, clearly understood.</p>
+          <p class="hero-desc" id="hero-desc">
+            Understanding our atmosphere. Predicting environmental change.<br>
+            Protecting the only planet we have.
+          </p>
+          <div class="hero-stats" id="hero-stats">
+            <div class="hstat">
+              <span class="hstat-n">14,280+</span>
+              <span class="hstat-l">Ground Stations</span>
+            </div>
+            <div class="hstat-div"></div>
+            <div class="hstat">
+              <span class="hstat-n">0.9988</span>
+              <span class="hstat-l">ML Model R²</span>
+            </div>
+            <div class="hstat-div"></div>
+            <div class="hstat">
+              <span class="hstat-n">21.2°C</span>
+              <span class="hstat-l">Global Mean SST</span>
+            </div>
+          </div>
+          <div class="hero-actions" id="hero-actions">
+            <a href="#scene-map" class="btn-glow">
+              Descend Into the World
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M19 9l-7 7-7-7" />
+              </svg>
+            </a>
+            <a href="#scene-command" class="btn-outline">ML Analytics ↗</a>
+          </div>
+        </div>
+
+        <div class="scroll-hint" id="scroll-hint">
+          <div class="scroll-wheel-wrap">
+            <div class="scroll-wheel-track">
+              <div class="scroll-wheel-ball"></div>
+            </div>
+          </div>
+          <span>Scroll to journey</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────────── -->
+    <!-- SCENE 2 · FRAMES 036–095                                -->
+    <!-- Descent through clouds → 3D relief world map + monuments-->
+    <!-- ─────────────────────────────────────────────────────── -->
+    <section class="scene scene-tall" id="scene-map" data-scene="map">
+      <!-- Sticky pinned text cards during scroll -->
+      <div class="pin-stage" id="pin-map">
+        <!-- Card A: Cloud descent -->
+        <div class="story-card" id="map-card-a">
+          <div class="card-overline">Atmospheric Entry · Tropospheric Descent</div>
+          <h2 class="card-heading">"Every breath<br>tells a story."</h2>
+          <p class="card-body">Descending through dense cloud formations, our sensors detect real-time chemical
+            signatures — the pulse of human industry written in the air above every continent.</p>
+          <div class="card-indicators">
+            <span class="ci-pill">PM₂.₅ ↑ 38%</span>
+            <span class="ci-pill ci-amber">NO₂ detected</span>
+            <span class="ci-pill ci-green">O₃ normal</span>
+          </div>
+        </div>
+
+        <!-- Card B: 3D relief world map with monuments -->
+        <div class="story-card story-card-right" id="map-card-b">
+          <div class="card-overline">Continental Reveal · 3D Relief Terrain</div>
+          <h2 class="card-heading">"One planet.<br>Countless stories."</h2>
+          <p class="card-body">The globe unfolds into a living relief map — Eiffel Tower, Pyramids, Taj Mahal, Statue of
+            Liberty, and the Great Wall emerge from the terrain. Every landmark, every ocean, every civilization
+            monitored in real-time.</p>
+          <div class="landmarks-row">
+            <span class="lmark">🗼 Paris</span>
+            <span class="lmark">🔺 Cairo</span>
+            <span class="lmark">🕌 India</span>
+            <span class="lmark">🗽 NYC</span>
+            <span class="lmark">🏯 China</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────────── -->
+    <!-- GEOGRAPHIC EXPLORER (Interactive content)               -->
+    <!-- ─────────────────────────────────────────────────────── -->
+    <section class="content-section" id="scene-explore">
+      <div class="section-wrap">
+        <div class="section-head">
+          <div class="tag-pill">
+            <svg width="10" height="10" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
+            </svg>
+            Geographic Network
+          </div>
+          <h2 class="section-title">Explore Global Air &amp; Ocean Networks</h2>
+        </div>
+
+        <div class="explorer-bar">
+          <div class="search-wrap">
+            <svg class="search-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input type="text" id="region-search-input" class="search-field"
+              placeholder="Search any country or a station in the selected country..." autocomplete="off">
+            <div id="search-dropdown-menu" class="search-drop"></div>
+          </div>
+          <div class="network-filters">
+            <label class="network-filter">
+              <span>Country</span>
+              <select id="country-select" aria-label="Select a country">
+                <option>Loading OpenAQ countries...</option>
+              </select>
+            </label>
+            <label class="network-filter">
+              <span>State / locality</span>
+              <select id="locality-select" aria-label="Filter stations by state or locality" disabled>
+                <option value="">All available localities</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="country-focus" id="country-focus-panel">
+            <div class="focus-hero">
+              <div>
+                <div class="focus-kicker">Regional monitoring</div>
+                <h3 id="focus-country-name">India</h3>
+              </div>
+              <span class="focus-dot"></span>
+            </div>
+
+            <div class="focus-grid">
+              <div class="focus-summary">
+                <div class="summary-header">
+                  <span>Live AQI</span>
+                  <span class="summary-tag" id="focus-country-tag">Moderate</span>
+                </div>
+                <div class="summary-score" id="focus-aqi-score">116</div>
+                <p class="data-quality-note" id="focus-data-note">Waiting for live station data</p>
+                <div class="summary-meta">
+                  <div>
+                    <label>Temperature</label>
+                    <strong id="focus-temp">28.8°C</strong>
+                  </div>
+                  <div>
+                    <label>Humidity</label>
+                    <strong id="focus-humidity">65%</strong>
+                  </div>
+                  <div>
+                    <label>Wind</label>
+                    <strong id="focus-wind">12.5 km/h</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="focus-stations" id="country-stations-list"></div>
+            </div>
+            <div class="station-list-footer">
+              <span id="station-results-meta" aria-live="polite"></span>
+              <button id="load-more-stations" class="load-more" type="button" hidden>Load more stations</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────────── -->
+    <!-- SCENE 3 · FRAMES 096–165                                -->
+    <!-- Atlantic Ocean · Sailing galleon "ATLANTICUS"           -->
+    <!-- ─────────────────────────────────────────────────────── -->
+    <section class="scene scene-tall" id="scene-ocean" data-scene="ocean">
+      <div class="pin-stage" id="pin-ocean">
+        <!-- Ocean story card -->
+        <div class="story-card story-card-left" id="ocean-card-a">
+          <div class="card-overline">Oceanic Intelligence · South Atlantic</div>
+          <h2 class="card-heading">"The health of our<br>planet goes deeper."</h2>
+          <p class="card-body">A galleon charts the Atlanticus — where satellite-grade ocean sensors track temperature,
+            salinity, pH, and dissolved oxygen across the world's seas. The ocean is Earth's true barometer.</p>
+          <div class="ocean-metrics-mini">
+            <div class="omm">
+              <span class="omm-val" id="mini-sst">21.4°C</span>
+              <span class="omm-lbl">SST</span>
+            </div>
+            <div class="omm">
+              <span class="omm-val" id="mini-ph">8.12</span>
+              <span class="omm-lbl">pH</span>
+            </div>
+            <div class="omm">
+              <span class="omm-val" id="mini-do">6.9 mg/L</span>
+              <span class="omm-lbl">DO</span>
+            </div>
+            <div class="omm">
+              <span class="omm-val" id="mini-sal">35.2 PSU</span>
+              <span class="omm-lbl">Salinity</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ocean Data Full Panel -->
+    <section class="content-section" id="scene-ocean-data">
+      <div class="section-wrap">
+        <div class="integrity-banner">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 16v-4M12 8h.01" />
+          </svg>
+          <div><strong>Scientific Integrity Notice:</strong> Marine data is sourced exclusively from Open-Meteo Marine
+            API and Copernicus CMEMS satellite observations. Ocean quality is <em>never</em> inferred from the
+            atmospheric AQI model.</div>
+        </div>
+
+        <div class="section-head" style="margin-top:2rem;">
+          <div class="tag-pill">
+            <svg width="10" height="10" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+            </svg>
+            Marine Biogeochemistry
+          </div>
+          <h2 class="section-title">Ocean Intelligence Dashboard</h2>
+        </div>
+
+        <div class="marine-grid">
+          <div class="mcard">
+            <div class="mcard-hd">
+              <div class="mcard-icon">🌊</div>
+              <span class="badge-sm badge-blue">OPEN-METEO MARINE</span>
+            </div>
+            <div class="mcard-val" id="val-sst">21.4°C</div>
+            <div class="mcard-lbl">Sea Surface Temperature</div>
+            <p class="mcard-desc">Thermal baseline governing marine biodiversity and evaporation dynamics.</p>
+          </div>
+          <div class="mcard">
+            <div class="mcard-hd">
+              <div class="mcard-icon">🧂</div>
+              <span class="badge-sm badge-green">COPERNICUS CMEMS</span>
+            </div>
+            <div class="mcard-val" id="val-salinity">35.2 PSU</div>
+            <div class="mcard-lbl">Practical Salinity</div>
+            <p class="mcard-desc">Global open-ocean baseline reflecting evaporation-precipitation balance.</p>
+          </div>
+          <div class="mcard">
+            <div class="mcard-hd">
+              <div class="mcard-icon">🫧</div>
+              <span class="badge-sm badge-green">COPERNICUS CMEMS</span>
+            </div>
+            <div class="mcard-val" id="val-do">6.9 mg/L</div>
+            <div class="mcard-lbl">Dissolved Oxygen</div>
+            <p class="mcard-desc">Aquatic oxygen saturation — guardian against coastal hypoxic dead zones.</p>
+          </div>
+          <div class="mcard">
+            <div class="mcard-hd">
+              <div class="mcard-icon">🧪</div>
+              <span class="badge-sm badge-purple">CMEMS REANALYSIS</span>
+            </div>
+            <div class="mcard-val" id="val-ph">8.12</div>
+            <div class="mcard-lbl">Ocean Surface pH</div>
+            <p class="mcard-desc">Acidification monitor protecting coral reefs and calcifying organisms.</p>
+          </div>
+          <div class="mcard">
+            <div class="mcard-hd">
+              <div class="mcard-icon">🌿</div>
+              <span class="badge-sm badge-blue">SATELLITE SENSING</span>
+            </div>
+            <div class="mcard-val" id="val-chlorophyll">0.42 mg/m³</div>
+            <div class="mcard-lbl">Chlorophyll-a Index</div>
+            <p class="mcard-desc">Phytoplankton concentration mapping marine primary productivity.</p>
+          </div>
+          <div class="mcard">
+            <div class="mcard-hd">
+              <div class="mcard-icon">🏊</div>
+              <span class="badge-sm badge-green">WHO CRITERIA</span>
+            </div>
+            <div class="mcard-val mcard-val-green" id="val-recreational-status">EXCELLENT</div>
+            <div class="mcard-lbl">Recreational Bathing</div>
+            <p class="mcard-desc">WHO safe bathing water directives and physical wave/current hazard.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────────── -->
+    <!-- SCENE 4 · FRAMES 166–226                                -->
+    <!-- Scholar's desk · Glass orb with ship inside            -->
+    <!-- ─────────────────────────────────────────────────────── -->
+    <section class="scene scene-tall" id="scene-globe" data-scene="globe">
+      <div class="pin-stage" id="pin-globe">
+        <div class="story-card story-card-center" id="globe-card-a">
+          <div class="card-overline">Microcosm View · Scholar's Observatory</div>
+          <h2 class="card-heading">"The world in<br>a single orb."</h2>
+          <p class="card-body">The camera pulls back to reveal the entire planet — seas, continents, and sailing galleon
+            — held within an antique glass sphere on a scholar's desk. Our planet: a delicate, self-contained system.
+          </p>
+          <a href="#scene-command" class="btn-glow btn-glow-sm">Enter Command Center →</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────────── -->
+    <!-- SCENE 5: COMMAND CENTER (Interactive dashboard)         -->
+    <!-- ─────────────────────────────────────────────────────── -->
+    <section class="content-section" id="scene-command">
+      <div class="section-wrap">
+        <div class="section-head">
+          <div class="tag-pill tag-purple">
+            <svg width="10" height="10" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+            </svg>
+            ML-Powered Telemetry
+          </div>
+          <h2 class="section-title">Environmental Command Center</h2>
+          <p class="section-sub">Real-time AQI, weather, ocean health, and ML predictions for any location on Earth.</p>
+        </div>
+
+        <!-- Telemetry Panel -->
+        <div class="command-panel">
+          <!-- Provenance Row -->
+          <div class="prov-row">
+            <span class="badge-prov badge-obs" id="air-quality-provenance">OPENAQ · WAITING</span>
+            <span class="badge-prov badge-fcst">WEATHER · OPEN-METEO</span>
+            <span class="badge-prov badge-ml">ML · SCIKIT-LEARN</span>
+          </div>
+
+          <!-- Location Title -->
+          <div class="loc-header">
+            <h3 id="telemetry-city-title">New Delhi</h3>
+            <p id="telemetry-station-sub">Mandir Marg CPCB • India (28.61°N, 77.21°E)</p>
+          </div>
+
+          <!-- Main Data Grid -->
+          <div class="data-grid">
+            <!-- AQI Hero -->
+            <div class="aqi-hero">
+              <div class="aqi-label">Air Quality Index</div>
+              <div class="aqi-number" id="aqi-score-number" style="color:#ef4444">116</div>
+              <div class="aqi-cat" id="aqi-category-text" style="color:#ef4444">Unhealthy for Sensitive Groups</div>
+              <svg class="aqi-dial" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="10" />
+                <circle cx="60" cy="60" r="50" fill="none" stroke="url(#aqiGrad)" stroke-width="10"
+                  stroke-dasharray="314" stroke-dashoffset="150" stroke-linecap="round" transform="rotate(-90 60 60)"
+                  id="aqi-dial-circle" />
+                <defs>
+                  <linearGradient id="aqiGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#10b981" />
+                    <stop offset="50%" stop-color="#f59e0b" />
+                    <stop offset="100%" stop-color="#ef4444" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+
+            <!-- Pollutants -->
+            <div class="pollutants-panel">
+              <div class="panel-label">Criteria Pollutants</div>
+              <div class="pollutants-grid">
+                <div class="pcell">
+                  <div class="pc-name">PM₂.₅</div>
+                  <div class="pc-val" id="val-pm25">118.5</div>
+                  <div class="pc-unit">µg/m³</div>
+                </div>
+                <div class="pcell">
+                  <div class="pc-name">PM₁₀</div>
+                  <div class="pc-val" id="val-pm10">215.0</div>
+                  <div class="pc-unit">µg/m³</div>
+                </div>
+                <div class="pcell">
+                  <div class="pc-name">NO₂</div>
+                  <div class="pc-val" id="val-no2">48.2</div>
+                  <div class="pc-unit">µg/m³</div>
+                </div>
+                <div class="pcell">
+                  <div class="pc-name">CO</div>
+                  <div class="pc-val" id="val-co">1.8</div>
+                  <div class="pc-unit">mg/m³</div>
+                </div>
+                <div class="pcell">
+                  <div class="pc-name">SO₂</div>
+                  <div class="pc-val" id="val-so2">14.5</div>
+                  <div class="pc-unit">µg/m³</div>
+                </div>
+                <div class="pcell">
+                  <div class="pc-name">O₃</div>
+                  <div class="pc-val" id="val-o3">38.6</div>
+                  <div class="pc-unit">µg/m³</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Weather -->
+            <div class="weather-panel">
+              <div class="panel-label">Meteorological Inputs</div>
+              <div class="weather-grid">
+                <div class="witem"><span class="wi-lbl">Temp</span><span class="wi-val" id="val-temp">24.8°C</span>
+                </div>
+                <div class="witem"><span class="wi-lbl">Humidity</span><span class="wi-val" id="val-humidity">65%</span>
+                </div>
+                <div class="witem"><span class="wi-lbl">Wind</span><span class="wi-val" id="val-wind">12.5 km/h</span>
+                </div>
+                <div class="witem"><span class="wi-lbl">Dominant</span><span class="wi-val"
+                    style="color:var(--c-cyan)">PM₂.₅</span></div>
+              </div>
+
+              <!-- Health Advisory -->
+              <div class="advisory">
+                <div class="adv-head" id="advisory-headline">Evidence-Based Health Guidance</div>
+                <p id="advisory-summary">Sensitive groups may experience adverse health effects. General public not
+                  likely affected.</p>
+                <ul id="advisory-bullets">
+                  <li>Sensitive groups should wear certified N95 respirators outdoors.</li>
+                  <li>Limit prolonged vigorous outdoor exertion.</li>
+                  <li>Keep indoor air filtration (HEPA) systems active.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────────── -->
+    <!-- SCENE 6: ANALYTICS & ML INFERENCE                       -->
+    <!-- ─────────────────────────────────────────────────────── -->
+    <section class="content-section" id="scene-analytics">
+      <div class="section-wrap">
+        <div class="section-head">
+          <div class="tag-pill tag-purple">
+            <svg width="10" height="10" viewBox="0 0 24 24">
+              <path fill="currentColor" d="M3 3v18h18M19 9l-5 5-4-4-3 3" />
+            </svg>
+            ML Inference Sandbox
+          </div>
+          <h2 class="section-title">Interactive Environmental Analytics</h2>
+          <p class="section-sub">Explore validated forecasts, historical trends, and real-time model inference.</p>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="chart-card">
+          <div class="chart-tabs">
+            <button class="ctab active" data-chart-view="forecast72">72-Hour AQI Forecast</button>
+            <button class="ctab" data-chart-view="pollutants">24-Hour Pollutant Trends</button>
+            <button class="ctab" data-chart-view="validation">Observed vs ML Prediction</button>
+            <button class="ctab" data-chart-view="marine">7-Day Ocean Trends</button>
+          </div>
+          <div id="plotly-timeline-chart" style="height:480px;"></div>
+        </div>
+
+        <!-- ML Simulator -->
+        <div class="simulator-wrap">
+          <div class="sim-controls">
+            <span class="sim-badge">GRADIENT BOOSTING REGRESSOR · R² = 0.9988</span>
+            <h3 class="sim-title">AQI Inference Simulator</h3>
+            <p class="sim-sub">Adjust pollutants and weather inputs — the model responds in real-time via
+              <code>POST /api/aqi/predict</code>.
+            </p>
+
+            <div class="sliders">
+              <div class="sgroup">
+                <div class="slbl-row"><span>PM₂.₅ (Fine Particles)</span><span class="slbl-val" id="lbl-sim-pm25">35
+                    µg/m³</span></div>
+                <input type="range" class="srange" id="sim-pm25" min="1" max="250" value="35">
+              </div>
+              <div class="sgroup">
+                <div class="slbl-row"><span>PM₁₀ (Inhalable Coarse)</span><span class="slbl-val" id="lbl-sim-pm10">65
+                    µg/m³</span></div>
+                <input type="range" class="srange" id="sim-pm10" min="5" max="350" value="65">
+              </div>
+              <div class="sgroup">
+                <div class="slbl-row"><span>NO₂ (Nitrogen Dioxide)</span><span class="slbl-val" id="lbl-sim-no2">25
+                    µg/m³</span></div>
+                <input type="range" class="srange" id="sim-no2" min="1" max="150" value="25">
+              </div>
+              <div class="sgroup">
+                <div class="slbl-row"><span>CO (Carbon Monoxide)</span><span class="slbl-val" id="lbl-sim-co">0.6
+                    mg/m³</span></div>
+                <input type="range" class="srange" id="sim-co" min="0.1" max="15" step="0.1" value="0.6">
+              </div>
+              <div class="sgroup">
+                <div class="slbl-row"><span>Temperature (°C)</span><span class="slbl-val slbl-blue" id="lbl-sim-temp">24
+                    °C</span></div>
+                <input type="range" class="srange" id="sim-temp" min="0" max="45" value="24">
+              </div>
+              <div class="sgroup">
+                <div class="slbl-row"><span>Wind Speed (km/h)</span><span class="slbl-val slbl-blue"
+                    id="lbl-sim-wind">12 km/h</span></div>
+                <input type="range" class="srange" id="sim-wind" min="0" max="50" value="12">
+              </div>
+            </div>
+          </div>
+
+          <div class="sim-result">
+            <div class="sim-result-inner">
+              <div class="sr-label">Live Inferred AQI</div>
+              <div class="sr-aqi" id="sim-result-aqi">72</div>
+              <div class="sr-cat" id="sim-result-cat" style="color:#eab308">Moderate</div>
+              <div class="sr-dom" id="sim-result-dominant">Dominant: PM₂.₅</div>
+              <div class="sr-ci" id="sim-result-conf">CI: [69.2 – 74.8]</div>
+              <div class="sr-note">Inference powered by scikit-learn Gradient Boosting Regressor trained on 904,010
+                OpenAQ + Open-Meteo records.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────────────────── -->
+    <!-- FOOTER                                                  -->
+    <!-- ─────────────────────────────────────────────────────── -->
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <h2 class="footer-motto">"Understand the planet. Protect its future."</h2>
+        <p class="footer-sub">Air Quality Index brings together trusted air monitoring, weather context, and transparent
+          environmental predictions.</p>
+        <a href="#scene-hero" class="btn-glow">Ascend to Planetary View ↑</a>
+        <div class="footer-credits">
+          <span>© 2026 Air Quality Index</span>
+          <span>OpenAQ v3</span>
+          <span>Open-Meteo</span>
+          <span>Copernicus CMEMS</span>
+          <span>GSAP ScrollTrigger</span>
+        </div>
+      </div>
+    </footer>
+
+  </div><!-- end #scroll-root -->
+
+  <script src="/static/js/app.js"></script>
+</body>
+
+</html>
