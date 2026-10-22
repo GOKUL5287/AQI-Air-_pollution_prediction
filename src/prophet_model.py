@@ -43,7 +43,9 @@ def _fit_station(station_df: pd.DataFrame) -> pd.DataFrame:
             continue
         regressors = [r for r in REGRESSORS if train[r].notna().any() and train[r].std() > 0]
         fill = train[regressors].median()
-        model = Prophet(daily_seasonality=True, weekly_seasonality=True, yearly_seasonality=False)
+        model = Prophet(
+            growth="flat", daily_seasonality=True, weekly_seasonality=True, yearly_seasonality=False
+        )
         for regressor in regressors:
             model.add_regressor(regressor)
         model.fit(train[["ds", "y"] + regressors].fillna(fill))
