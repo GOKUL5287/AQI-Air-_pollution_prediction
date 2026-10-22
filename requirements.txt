@@ -27,3 +27,7 @@ streamlit
 # Interactive maps
 folium
 streamlit-folium
+
+# Deep learning / forecasting (torch: CPU build)
+torch==2.14.1
+prophet==1.5.0
