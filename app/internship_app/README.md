@@ -1,4 +1,4 @@
-# TerraPulse — Global Air & Ocean Intelligence Platform
+# Air Quality Index — Global Air & Ocean Intelligence Platform
 
 > **Cinematic, scientifically responsible environmental intelligence platform combining a scroll-driven frame sequence, live OpenAQ ground telemetry, Open-Meteo weather forecasts, marine oceanographic reanalysis, and a verified machine-learning AQI prediction pipeline.**
 
