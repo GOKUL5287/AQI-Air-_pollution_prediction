@@ -121,21 +121,25 @@ def run_lstm(df: pd.DataFrame, max_epochs: int = MAX_EPOCHS) -> pd.DataFrame:
     for epoch in range(max_epochs):
         started = time.time()
         model.train()
+        losses = []
         for xb, yb in _loader(x, y, fit_ends, generator):
             optimizer.zero_grad()
             loss = _masked_mae(model(xb), yb)
             loss.backward()
             optimizer.step()
+            losses.append(loss.item())
         val = float(_masked_mae(torch.from_numpy(_predict(model, x, y, val_ends)),
                                 torch.from_numpy(y[val_ends])))
-        print(f"epoch {epoch + 1} val_mae_scaled={val:.4f} {time.time() - started:.0f}s", flush=True)
+        print(f"epoch {epoch + 1} train_mae_scaled={np.mean(losses):.4f} val_mae_scaled={val:.4f} "
+              f"{time.time() - started:.0f}s", flush=True)
         if val < best:
-            best, best_state, bad = val, copy.deepcopy(model.state_dict()), 0
+            best, best_state, best_epoch, bad = val, copy.deepcopy(model.state_dict()), epoch + 1, 0
         else:
             bad += 1
             if bad >= PATIENCE:
                 break
     model.load_state_dict(best_state)
+    print(f"best epoch {best_epoch} val_mae_scaled={best:.4f} y_std={y_std.round(2).tolist()}", flush=True)
 
     pred = _predict(model, x, y, test_ends) * y_std + y_mean
     test = df.iloc[test_ends]
