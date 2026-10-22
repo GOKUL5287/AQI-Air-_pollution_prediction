@@ -64,7 +64,10 @@ def evaluate_predictions(predictions: pd.DataFrame) -> pd.DataFrame:
 
 
 def save_outputs(
-    predictions: pd.DataFrame, metrics: pd.DataFrame, output_dir: Union[str, Path]
+    predictions: pd.DataFrame,
+    metrics: pd.DataFrame,
+    output_dir: Union[str, Path],
+    version: str = "v1",
 ) -> tuple[Path, Path]:
     """Write the agreed D3 CSV files into the processed data directory."""
     output_dir = Path(output_dir)
@@ -76,8 +79,8 @@ def save_outputs(
     if missing:
         raise ValueError(f"Predictions are missing output columns: {sorted(missing)}")
 
-    predictions_path = output_dir / "predictions_v1.csv"
-    metrics_path = output_dir / "metrics_v1.csv"
+    predictions_path = output_dir / f"predictions_{version}.csv"
+    metrics_path = output_dir / f"metrics_{version}.csv"
     predictions[prediction_columns].to_csv(predictions_path, index=False)
     metrics.to_csv(metrics_path, index=False)
     return predictions_path, metrics_path
