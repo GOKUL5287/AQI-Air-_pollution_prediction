@@ -92,10 +92,10 @@ def _predict(model, x, y, ends):
     return np.concatenate([model(xb).numpy() for xb, _ in _loader(x, y, ends)])
 
 
-def run_lstm(df: pd.DataFrame, max_epochs: int = MAX_EPOCHS) -> pd.DataFrame:
+def run_lstm(df: pd.DataFrame, max_epochs: int = MAX_EPOCHS, seed: int = SEED) -> pd.DataFrame:
     """Fit on train windows (last 10% by time for early stopping); predict test windows."""
-    torch.manual_seed(SEED)
-    np.random.seed(SEED)
+    torch.manual_seed(seed)
+    np.random.seed(seed)
     features = _feature_columns(df)
     df, ends = make_windows(df)
     train_ends, test_ends = split_windows(df, ends)
@@ -116,7 +116,7 @@ def run_lstm(df: pd.DataFrame, max_epochs: int = MAX_EPOCHS) -> pd.DataFrame:
 
     model = LSTMNet(x.shape[1])
     optimizer = torch.optim.Adam(model.parameters())
-    generator = torch.Generator().manual_seed(SEED)
+    generator = torch.Generator().manual_seed(seed)
     best, best_state, bad = np.inf, None, 0
     for epoch in range(max_epochs):
         started = time.time()
@@ -162,8 +162,15 @@ def run_lstm(df: pd.DataFrame, max_epochs: int = MAX_EPOCHS) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
+    import sys
+
     from src.data_loader import data_dir, load_features
 
-    run_lstm(load_features()).to_parquet(
-        data_dir() / "processed" / "predictions_lstm.parquet", index=False
-    )
+    df = load_features()
+    if len(sys.argv) == 1:
+        run_lstm(df).to_parquet(data_dir() / "processed" / "predictions_lstm.parquet", index=False)
+    for seed in map(int, sys.argv[1:]):
+        print(f"seed {seed}", flush=True)
+        run_lstm(df, seed=seed).to_parquet(
+            data_dir() / "processed" / f"predictions_lstm_seed{seed}.parquet", index=False
+        )
