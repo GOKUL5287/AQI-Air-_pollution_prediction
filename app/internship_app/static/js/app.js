@@ -447,6 +447,10 @@ class TerraPulseApp {
 
     // 7. ML simulator
     this._initSimulator();
+
+    // 8. Integrated history dashboard and persistent location map
+    this._initSeasonalDashboard();
+    this._initMapOverlay();
   }
 
   _navbarScroll() {
@@ -617,6 +621,598 @@ class TerraPulseApp {
         this._renderChart(tab.dataset.chartView);
       });
     });
+
+    document.getElementById('seasonal-city')?.addEventListener('change', (event) => {
+      const yearSelect = document.getElementById('seasonal-year');
+      if (yearSelect) yearSelect.value = '';
+      this._loadSeasonalDashboard(event.target.value);
+    });
+    document.getElementById('seasonal-year')?.addEventListener('change', () => {
+      const city = document.getElementById('seasonal-city')?.value;
+      if (city) this._loadSeasonalDashboard(city);
+    });
+    document.getElementById('seasonal-download')?.addEventListener('click', () => {
+      this._downloadSeasonalCsv();
+    });
+    document.querySelectorAll('.seasonal-tab').forEach((tab) => {
+      tab.addEventListener('click', () => this._showSeasonalTab(tab.dataset.seasonalTab));
+      tab.addEventListener('keydown', (event) => {
+        if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+        const tabs = [...document.querySelectorAll('.seasonal-tab')];
+        const currentIndex = tabs.indexOf(tab);
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        const next = tabs[(currentIndex + direction + tabs.length) % tabs.length];
+        event.preventDefault();
+        this._showSeasonalTab(next.dataset.seasonalTab);
+        next.focus();
+      });
+    });
+  }
+
+  _initMapOverlay() {
+    const dialog = document.getElementById('station-map-dialog');
+    const launcher = document.getElementById('map-launcher');
+    if (!dialog || !launcher) return;
+
+    launcher.addEventListener('click', async () => {
+      if (!window.L) {
+        document.getElementById('map-location-count').textContent =
+          'The map library did not load. Check your connection and reload the page.';
+      }
+      dialog.showModal();
+      if (window.L) {
+        await this._loadMapLocations();
+        this._renderStationMap();
+        this._loadMapSensorStatus();
+        window.setTimeout(() => this.map?.invalidateSize(), 120);
+      }
+    });
+    document.getElementById('map-close')?.addEventListener('click', () => dialog.close());
+    document.getElementById('map-location-search-button')?.addEventListener('click', () => {
+      this._findMapLocation();
+    });
+    document.getElementById('map-location-search')?.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') return;
+      event.preventDefault();
+      this._findMapLocation();
+    });
+    dialog.addEventListener('click', (event) => {
+      const target = event.target instanceof Element
+        ? event.target.closest('.map-popup-select')
+        : null;
+      if (target) {
+        const station = this.mapLocations?.find((item) =>
+          String(item.station_id) === target.dataset.stationId
+        );
+        if (station) {
+          dialog.close();
+          this._openMapStation(station);
+        }
+        return;
+      }
+      if (event.target === dialog) dialog.close();
+    });
+  }
+
+  _findMapLocation() {
+    const input = document.getElementById('map-location-search');
+    const query = input?.value.trim().toLocaleLowerCase();
+    if (!query || !this.mapLocations?.length) return;
+    const station = this.mapLocations.find((item) =>
+      [item.station_name, item.city, item.locality, item.country, item.country_code]
+        .some((value) => String(value || '').toLocaleLowerCase().includes(query))
+    );
+    const marker = station && this.mapMarkers?.get(String(station.station_id));
+    if (!station || !marker) {
+      input.setCustomValidity('No matching monitoring location was found.');
+      input.reportValidity();
+      return;
+    }
+    input.setCustomValidity('');
+    this.map.setView([Number(station.lat), Number(station.lon)], 10);
+    marker.openPopup();
+  }
+
+  async _openMapStation(station) {
+    await this.selectLocation(station);
+    document.getElementById('scene-command')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async _loadMapLocations() {
+    if (this.mapLocations?.length) return;
+    const count = document.getElementById('map-location-count');
+    if (count) count.textContent = 'Loading worldwide OpenAQ sensor locations…';
+
+    try {
+      const firstResponse = await fetch('/api/regions/stations?page=1&limit=1000');
+      const firstPage = await firstResponse.json();
+      if (!firstResponse.ok || firstPage.status !== 'success') {
+        throw new Error(firstPage.message || 'Could not load global sensor locations.');
+      }
+      const pages = [firstPage];
+      const totalPages = Number.isFinite(Number(firstPage.total))
+        ? Math.ceil(Number(firstPage.total) / 1000)
+        : null;
+      let nextPage = 2;
+      while (totalPages === null ? pages[pages.length - 1].page_count === 1000 : nextPage <= totalPages) {
+        const batch = Array.from(
+          { length: Math.min(4, totalPages === null ? 4 : totalPages - nextPage + 1) },
+          (_, index) => nextPage + index
+        );
+        const batchResults = await Promise.all(batch.map(async (page) => {
+          const response = await fetch(`/api/regions/stations?page=${page}&limit=1000`);
+          const result = await response.json();
+          if (!response.ok || result.status !== 'success') {
+            throw new Error(result.message || `Could not load global sensor page ${page}.`);
+          }
+          return result;
+        }));
+        pages.push(...batchResults);
+        nextPage += batch.length;
+        const loaded = pages.reduce((total, page) => total + (page.data || []).length, 0);
+        if (count) count.textContent = `Loading worldwide sensor locations… ${loaded.toLocaleString()} loaded`;
+        if (totalPages === null && batchResults[batchResults.length - 1].page_count < 1000) break;
+      }
+      this.mapLocations = pages.flatMap((page) => page.data || []).map((station) => ({
+        ...station,
+        station_id: String(station.station_id || ''),
+      })).filter((station) =>
+        station.lat !== null && station.lon !== null
+        && Number.isFinite(Number(station.lat)) && Number.isFinite(Number(station.lon))
+        && Math.abs(Number(station.lat)) <= 90 && Math.abs(Number(station.lon)) <= 180
+      );
+      if (!this.mapLocations.length) {
+        throw new Error('No global monitoring locations with coordinates are available.');
+      }
+    } catch (error) {
+      this.mapLocations = [];
+      if (count) count.textContent = `Map locations could not be loaded: ${error.message}`;
+      console.error('[TerraPulse] Global sensor locations failed:', error);
+    }
+  }
+
+  async _loadMapSensorStatus() {
+    const status = document.getElementById('map-sensor-status');
+    if (!status) return;
+    try {
+      const response = await fetch('/api/air-quality/live-status');
+      const result = await response.json();
+      if (!response.ok || result.status !== 'success') {
+        throw new Error(result.message || 'Live sensor status is unavailable.');
+      }
+      status.textContent = result.live_available
+        ? 'OpenAQ is configured. Select a marker to load its latest sensor readings.'
+        : 'OpenAQ API key is not configured. Reference locations are not live sensor readings.';
+    } catch (error) {
+      status.textContent = `Unable to check live sensor availability: ${error.message}`;
+    }
+  }
+
+  _mapSensorPopupContent(station, state, data = null, error = '') {
+    const observed = data?.observed_measurements || {};
+    const units = data?.units || {};
+    const hasLiveReadings = data?.status === 'LIVE' && Object.keys(observed).length > 0;
+    const names = { pm25: 'PM2.5', pm10: 'PM10', no2: 'NO₂', co: 'CO', so2: 'SO₂', o3: 'O₃' };
+    const sensorNames = (station.parameters || []).map((parameter) => {
+      const key = String(parameter).toLowerCase().replace(/[.\s_-]/g, '');
+      return names[key] || parameter;
+    });
+    const readings = Object.entries(observed).map(([key, value]) => {
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue)) return '';
+      return `<li>${this._escapeHTML(names[key] || key)}: ${numericValue} ${this._escapeHTML(units[key] || '')}</li>`;
+    }).filter(Boolean).join('');
+    const timestamp = data?.timestamp ? new Date(data.timestamp) : null;
+    const timeLabel = timestamp && !Number.isNaN(timestamp.valueOf())
+      ? timestamp.toLocaleString()
+      : '';
+    const sensorMessage = error
+      ? this._escapeHTML(error)
+      : state === 'loading'
+        ? 'Loading latest sensor readings…'
+        : hasLiveReadings
+          ? `Observed at ${this._escapeHTML(data.station_name || 'nearby OpenAQ station')}${timeLabel ? ` · ${this._escapeHTML(timeLabel)}` : ''}`
+          : data?.provenance === 'DEMONSTRATION'
+            ? 'Reference/demo values only; no live sensor reading.'
+            : data?.status === 'NO_LATEST_MEASUREMENTS'
+              ? 'No current sensor readings are available for this station.'
+              : 'No live sensor observation is available.';
+    const liveClass = hasLiveReadings ? 'is-live' : 'is-unavailable';
+    return `<strong>${this._escapeHTML(station.station_name || station.name || station.city || 'Monitoring location')}</strong>` +
+      `<br>${this._escapeHTML(station.city || '')}, ${this._escapeHTML(station.country || '')}` +
+      `<br><small>${this._escapeHTML(station.provider || 'Location provider not specified')}</small>` +
+      `${sensorNames.length ? `<br><small>Available sensors: ${this._escapeHTML(sensorNames.join(', '))}</small>` : ''}` +
+      `<br><small>${Number(station.lat).toFixed(4)}, ${Number(station.lon).toFixed(4)}</small>` +
+      `<div class="map-sensor-reading ${liveClass}" aria-live="polite">${sensorMessage}` +
+      `${readings ? `<ul>${readings}</ul>` : ''}</div>` +
+      `<button class="map-popup-refresh" type="button">Refresh sensor reading</button>` +
+      `<br><button class="map-popup-select" type="button" data-station-id="${this._escapeHTML(station.station_id || '')}">Load station telemetry</button>`;
+  }
+
+  _openSeasonalDashboard(station) {
+    const section = document.getElementById('scene-seasonal');
+    const citySelect = document.getElementById('seasonal-city');
+    const stationCities = [station.city, station.locality, station.name, station.station_name]
+      .filter(Boolean)
+      .map((name) => String(name).trim());
+    const cityAliases = stationCities.flatMap((city) => {
+      const normalized = city.toLowerCase();
+      if (normalized === 'new delhi') return [city, 'Delhi'];
+      if (normalized === 'delhi') return [city, 'New Delhi'];
+      return [city];
+    });
+    const matchingOption = citySelect && [...citySelect.options].find((option) =>
+      cityAliases.some((city) => option.value.toLowerCase() === city.toLowerCase())
+    );
+
+    if (matchingOption && citySelect.value !== matchingOption.value) {
+      citySelect.value = matchingOption.value;
+      const yearSelect = document.getElementById('seasonal-year');
+      if (yearSelect) yearSelect.value = '';
+      this._loadSeasonalDashboard(matchingOption.value);
+    }
+
+    if (!section) return;
+    window.history.replaceState(null, '', '#scene-seasonal');
+    window.setTimeout(() => {
+      section.scrollIntoView({ behavior: 'instant', block: 'start' });
+    }, 0);
+  }
+
+  _renderStationMap() {
+    const count = document.getElementById('map-location-count');
+    const locations = (this.mapLocations || []).filter((station) =>
+      station.lat !== null && station.lat !== '' && station.lon !== null && station.lon !== ''
+      && Number.isFinite(Number(station.lat)) && Number.isFinite(Number(station.lon))
+      && Math.abs(Number(station.lat)) <= 90 && Math.abs(Number(station.lon)) <= 180
+    );
+    if (!locations.length) {
+      if (count) {
+        count.textContent = this.mapLocations?.length
+          ? 'Loaded locations do not include valid coordinates.'
+          : count.textContent || 'Worldwide monitoring locations could not be loaded. Close the map and open it again to retry.';
+      }
+      return;
+    }
+
+    if (!this.map) {
+      this.map = window.L.map('station-map', {
+        scrollWheelZoom: true,
+        touchZoom: true,
+        doubleClickZoom: true,
+        preferCanvas: true
+      }).setView([20, 0], 2);
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(this.map);
+      this.mapLayer = window.L.featureGroup().addTo(this.map);
+    }
+
+    this.mapLayer.clearLayers();
+    this.mapMarkers = new Map();
+    const searchInput = document.getElementById('map-location-search');
+    if (searchInput) searchInput.setCustomValidity('');
+    locations.forEach((station) => {
+      const lat = Number(station.lat);
+      const lon = Number(station.lon);
+      const isSelected = station.station_id === this.currentStation?.station_id;
+      const marker = window.L.circleMarker([lat, lon], {
+        radius: isSelected ? 9 : 6,
+        color: isSelected ? '#f7d49a' : '#809197',
+        fillColor: '#9ba9ad',
+        fillOpacity: 0.9,
+        weight: 2
+      }).addTo(this.mapLayer);
+      const cacheKey = String(station.station_id || `${lat},${lon}`);
+      this.mapMarkers.set(cacheKey, marker);
+      marker.bindPopup(this._mapSensorPopupContent(station, 'idle'));
+      marker.on('popupopen', (event) => {
+        const popup = event.popup;
+        const render = (state, data = null, error = '') => {
+          popup.setContent(this._mapSensorPopupContent(station, state, data, error));
+          const element = popup.getElement();
+          element?.querySelector('.map-popup-refresh')?.addEventListener('click', async (clickEvent) => {
+            clickEvent.stopPropagation();
+            await loadReading(true);
+          });
+          popup.update();
+        };
+        const loadReading = async (forceRefresh = false) => {
+          const cache = this.mapReadingCache || (this.mapReadingCache = new Map());
+          const cached = cache.get(cacheKey);
+          if (!forceRefresh && cached && Date.now() - cached.fetchedAt < 15 * 60 * 1000) {
+            render('loaded', cached.data);
+            this._updateMapMarkerReading(marker, cached.data, isSelected);
+            return;
+          }
+          render('loading');
+          try {
+            const query = new URLSearchParams({
+              lat: String(lat),
+              lon: String(lon),
+              station_id: String(station.station_id || ''),
+              ...(forceRefresh ? { refresh: '1' } : {})
+            });
+            const response = await fetch(`/api/air-quality/current?${query}`);
+            const result = await response.json();
+            if (!response.ok || result.status !== 'success') {
+              throw new Error(result.message || 'Unable to load sensor readings.');
+            }
+            cache.set(cacheKey, { fetchedAt: Date.now(), data: result.data });
+            render('loaded', result.data);
+            this._updateMapMarkerReading(marker, result.data, isSelected);
+          } catch (error) {
+            render('error', null, `Sensor readings could not be loaded: ${error.message}`);
+          }
+        };
+        loadReading();
+      });
+    });
+    if (count) {
+      count.textContent = `${locations.length.toLocaleString()} worldwide monitoring locations. Select a marker to view available sensors and latest readings.`;
+    }
+  }
+
+  _updateMapMarkerReading(marker, data, isSelected) {
+    const hasLiveReadings = data?.status === 'LIVE'
+      && Object.keys(data.observed_measurements || {}).length > 0;
+    marker.setStyle({
+      color: isSelected ? '#f7d49a' : hasLiveReadings ? '#41c9a5' : '#809197',
+      fillColor: hasLiveReadings ? '#41c9a5' : '#9ba9ad'
+    });
+  }
+
+  async _initSeasonalDashboard() {
+    await this._loadSeasonalDashboard();
+  }
+
+  async _loadSeasonalDashboard(city) {
+    const status = document.getElementById('seasonal-status');
+    const citySelect = document.getElementById('seasonal-city');
+    const yearSelect = document.getElementById('seasonal-year');
+    if (!status || !citySelect || !yearSelect) return;
+    const requestId = (this.seasonalRequestId || 0) + 1;
+    this.seasonalRequestId = requestId;
+
+    const params = new URLSearchParams();
+    if (city) params.set('city', city);
+    if (yearSelect.value) params.set('year', yearSelect.value);
+    status.textContent = 'Loading historical AQI summaries…';
+    status.classList.remove('is-error');
+
+    try {
+      const response = await fetch(`/api/analytics/seasonal?${params.toString()}`);
+      const result = await response.json();
+      if (!response.ok || result.status !== 'success') {
+        throw new Error(result.message || `Seasonal history request failed (${response.status}).`);
+      }
+      if (requestId !== this.seasonalRequestId) return;
+
+      const data = result.data;
+      this.seasonalData = data;
+      if (document.activeElement !== citySelect) {
+        citySelect.innerHTML = data.cities.map((name) =>
+          `<option value="${this._escapeHTML(name)}">${this._escapeHTML(name)}</option>`
+        ).join('');
+        citySelect.value = data.city;
+      }
+      if (document.activeElement !== yearSelect || !yearSelect.options.length) {
+        yearSelect.innerHTML = [...data.years].reverse().map((value) =>
+          `<option value="${value}">${value}</option>`
+        ).join('');
+        yearSelect.value = String(data.year);
+      }
+      citySelect.disabled = false;
+      yearSelect.disabled = false;
+      document.getElementById('seasonal-download').disabled = !data.monthly.length;
+      this._renderSeasonalDashboard(data);
+      const summary = data.summary;
+      status.textContent = `${data.city} · ${summary.rows.toLocaleString()} hourly station records · ${summary.stations} stations · ${summary.start.slice(0, 10)} to ${summary.end.slice(0, 10)}`;
+      document.getElementById('seasonal-summary').hidden = false;
+    } catch (error) {
+      if (requestId !== this.seasonalRequestId) return;
+      status.textContent = error.message;
+      status.classList.add('is-error');
+      citySelect.disabled = true;
+      yearSelect.disabled = true;
+      document.getElementById('seasonal-download').disabled = true;
+      console.error('[TerraPulse] Seasonal history failed:', error);
+    }
+  }
+
+  _renderSeasonalDashboard(data) {
+    if (!window.Plotly) return;
+    const pollutantColors = {
+      'PM2.5': '#b6e8e5', 'PM10': '#f7d49a', 'NO2': '#91b7e5',
+      'CO': '#d0c4df', 'SO2': '#efbdc7', 'O3': '#b9dfc8'
+    };
+    const layout = {
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(5,13,20,0.28)',
+      font: { family: 'DM Sans, sans-serif', color: '#d0dcda', size: 12 },
+      margin: { l: 48, r: 24, t: 18, b: 48 },
+      xaxis: { gridcolor: 'rgba(197,221,223,0.1)', linecolor: 'rgba(197,221,223,0.18)' },
+      yaxis: { gridcolor: 'rgba(197,221,223,0.1)', linecolor: 'rgba(197,221,223,0.18)' },
+      legend: { orientation: 'h', y: 1.12, x: 0, bgcolor: 'rgba(0,0,0,0)' }
+    };
+    const config = { responsive: true, displayModeBar: false };
+
+    document.getElementById('seasonal-mean-aqi').textContent =
+      Number.isFinite(data.summary.mean_aqi) ? data.summary.mean_aqi.toFixed(1) : '—';
+    document.getElementById('seasonal-stations').textContent = data.summary.stations.toLocaleString();
+    document.getElementById('seasonal-records').textContent = data.summary.rows.toLocaleString();
+    document.getElementById('seasonal-period').textContent =
+      `${data.summary.start.slice(0, 4)}–${data.summary.end.slice(0, 4)}`;
+
+    window.Plotly.react('seasonal-monthly-chart', [{
+      x: data.monthly.map((row) => row.date),
+      y: data.monthly.map((row) => row.AQI),
+      customdata: data.monthly.map((row) => row.observations),
+      type: 'scatter',
+      mode: 'lines+markers',
+      name: 'Monthly mean AQI',
+      line: { color: '#b6e8e5', width: 2.5 },
+      marker: { size: 5 },
+      connectgaps: false,
+      hovertemplate: '%{x|%b %Y}<br>Mean AQI: %{y:.1f}<br>Valid AQI records: %{customdata:,}<extra></extra>'
+    }], {
+      ...layout,
+      xaxis: { ...layout.xaxis, title: 'Month', type: 'date' },
+      yaxis: { ...layout.yaxis, title: 'AQI' }
+    }, config);
+
+    const seasons = data.seasons;
+    const pollutants = Object.keys(pollutantColors);
+    window.Plotly.react('seasonal-pollutant-chart', pollutants.map((pollutant) => ({
+      x: seasons.map((row) => row.season),
+      y: seasons.map((row) => row.pollutant_index[pollutant]),
+      name: pollutant,
+      type: 'bar',
+      marker: { color: pollutantColors[pollutant] },
+      hovertemplate: `${pollutant}<br>%{x}<br>Index: %{y:.1f}<extra></extra>`
+    })), {
+      ...layout,
+      barmode: 'group',
+      xaxis: { ...layout.xaxis, title: 'Season' },
+      yaxis: { ...layout.yaxis, title: 'Index (all-season mean = 100)', rangemode: 'tozero' }
+    }, config);
+
+    window.Plotly.react('seasonal-weather-chart', [
+      {
+        x: seasons.map((row) => row.season), y: seasons.map((row) => row.Temperature_C),
+        name: 'Temperature (°C)', type: 'scatter', mode: 'lines+markers',
+        line: { color: '#f7d49a', width: 2.5 }
+      },
+      {
+        x: seasons.map((row) => row.season), y: seasons.map((row) => row.Wind_Speed_kmh),
+        name: 'Wind (km/h)', type: 'scatter', mode: 'lines+markers',
+        line: { color: '#91b7e5', width: 2.5 }
+      },
+      {
+        x: seasons.map((row) => row.season), y: seasons.map((row) => row.Relative_Humidity_pct),
+        name: 'Humidity (%)', type: 'scatter', mode: 'lines+markers', yaxis: 'y2',
+        line: { color: '#b9dfc8', width: 2, dash: 'dot' }
+      }
+    ], {
+      ...layout,
+      yaxis: { ...layout.yaxis, title: 'Temperature / wind' },
+      yaxis2: { title: 'Humidity (%)', overlaying: 'y', side: 'right', showgrid: false },
+      xaxis: { ...layout.xaxis, title: 'Season' }
+    }, config);
+
+    this._renderSeasonalCalendar(data);
+    const qualityEntries = Object.entries(data.quality);
+    window.Plotly.react('seasonal-quality-chart', [{
+      x: qualityEntries.map(([, value]) => value),
+      y: qualityEntries.map(([name]) => name),
+      type: 'bar',
+      orientation: 'h',
+      marker: { color: qualityEntries.map(([name]) => name === 'AQI' ? '#f7d49a' : '#91b7e5') },
+      hovertemplate: '%{y}: %{x:.1f}% missing<extra></extra>'
+    }], {
+      ...layout,
+      margin: { ...layout.margin, l: 115 },
+      xaxis: { ...layout.xaxis, title: 'Missing records (%)', range: [0, 100] },
+      yaxis: { ...layout.yaxis, autorange: 'reversed' }
+    }, config);
+    this._showSeasonalTab(this.activeSeasonalTab || 'overview');
+  }
+
+  _showSeasonalTab(name) {
+    this.activeSeasonalTab = name;
+    document.querySelectorAll('.seasonal-tab').forEach((tab) => {
+      const active = tab.dataset.seasonalTab === name;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', String(active));
+      tab.tabIndex = active ? 0 : -1;
+    });
+    document.querySelectorAll('.seasonal-panel').forEach((panel) => {
+      panel.hidden = panel.dataset.seasonalPanel !== name;
+    });
+    const panel = document.querySelector(`[data-seasonal-panel="${name}"]`);
+    if (panel && window.Plotly) {
+      window.setTimeout(() => {
+        panel.querySelectorAll('.js-plotly-plot').forEach((chart) => window.Plotly.Plots.resize(chart));
+      }, 0);
+    }
+  }
+
+  _renderSeasonalCalendar(data) {
+    const year = Number(data.year);
+    const start = new Date(Date.UTC(year, 0, 1));
+    const end = new Date(Date.UTC(year + 1, 0, 1));
+    const dates = new Map(data.daily.map((item) => [item.date, item]));
+    const weekCount = Math.ceil((Math.ceil((end - start) / 86400000) + start.getUTCDay()) / 7);
+    const values = Array.from({ length: 7 }, () => Array(weekCount).fill(null));
+    const custom = Array.from({ length: 7 }, () => Array(weekCount).fill(null));
+
+    for (let date = new Date(start); date < end; date.setUTCDate(date.getUTCDate() + 1)) {
+      const offset = Math.floor((date - start) / 86400000);
+      const week = Math.floor((offset + start.getUTCDay()) / 7);
+      const weekday = date.getUTCDay();
+      const label = date.toISOString().slice(0, 10);
+      const item = dates.get(label);
+      values[weekday][week] = item?.aqi ?? null;
+      custom[weekday][week] = item
+        ? `${label}<br>Daily mean AQI: ${item.aqi === null ? 'no data' : item.aqi.toFixed(1)}<br>Hourly records: ${item.observations}`
+        : `${label}<br>No AQI observation`;
+    }
+
+    window.Plotly.react('seasonal-calendar-chart', [{
+      x: Array.from({ length: weekCount }, (_, index) => index + 1),
+      y: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      z: values,
+      customdata: custom,
+      type: 'heatmap',
+      colorscale: [
+        [0, '#34d399'], [0.1, '#34d399'],
+        [0.1001, '#fbbf24'], [0.2, '#fbbf24'],
+        [0.2001, '#fb923c'], [0.4, '#fb923c'],
+        [0.4001, '#ef4444'], [0.6, '#ef4444'],
+        [0.6001, '#a855f7'], [0.8, '#a855f7'],
+        [0.8001, '#7f1d1d'], [1, '#7f1d1d']
+      ],
+      zmin: 0,
+      zmax: 500,
+      xgap: 3,
+      ygap: 3,
+      hovertemplate: '%{customdata}<extra></extra>',
+      colorbar: {
+        title: 'AQI',
+        tickvals: [25, 75, 150, 250, 350, 450],
+        ticktext: ['Good', 'Satisfactory', 'Moderate', 'Poor', 'Very Poor', 'Severe']
+      }
+    }], {
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      font: { family: 'DM Sans, sans-serif', color: '#d0dcda', size: 12 },
+      margin: { l: 55, r: 50, t: 12, b: 36 },
+      xaxis: {
+        title: 'Week of year',
+        tickmode: 'array',
+        tickvals: Array.from({ length: Math.ceil(weekCount / 4) }, (_, index) => index * 4 + 1),
+        gridcolor: 'rgba(0,0,0,0)',
+        zeroline: false
+      },
+      yaxis: { autorange: 'reversed', gridcolor: 'rgba(0,0,0,0)', zeroline: false }
+    }, { responsive: true, displayModeBar: false });
+  }
+
+  _downloadSeasonalCsv() {
+    if (!this.seasonalData?.monthly?.length) return;
+    const columns = ['date', 'season', 'observations', 'AQI', 'PM2.5', 'PM10', 'NO2', 'CO', 'SO2', 'O3',
+      'Temperature_C', 'Relative_Humidity_pct', 'Wind_Speed_kmh'];
+    const escapeCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const csv = [columns.join(','), ...this.seasonalData.monthly.map((row) =>
+      columns.map((column) => escapeCell(row[column])).join(',')
+    )].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${this.seasonalData.city.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-monthly-aqi.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
   }
 
   _renderSearch(results) {
@@ -835,6 +1431,7 @@ class TerraPulseApp {
     const container = document.getElementById('plotly-timeline-chart');
     if (!container || !window.Plotly || !this.currentStation) return;
 
+    container.style.height = view === 'validation' ? 'auto' : '480px';
     const { lat, lon, station_id } = this.currentStation;
     const base = {
       paper_bgcolor: 'rgba(0,0,0,0)',
@@ -857,8 +1454,8 @@ class TerraPulseApp {
         const pm25Vals = tl.map(t => t.estimated_pm25);
         const temps = tl.map(t => t.weather_inputs.temperature_c);
         Plotly.newPlot(container, [
-          { x: times, y: aqiVals, name: 'Predicted AQI (ML)', mode: 'lines+markers', line: { color: '#00e5ff', width: 3 }, marker: { size: 5 } },
-          { x: times, y: pm25Vals, name: 'PM₂.₅ (µg/m³)', mode: 'lines', line: { color: '#f59e0b', width: 2, dash: 'dot' } },
+          { x: times, y: aqiVals, name: 'Estimated AQI', mode: 'lines+markers', line: { color: '#00e5ff', width: 3 }, marker: { size: 5 } },
+          { x: times, y: pm25Vals, name: 'Estimated PM₂.₅ (µg/m³)', mode: 'lines', line: { color: '#f59e0b', width: 2, dash: 'dot' } },
           { x: times, y: temps, name: 'Temperature (°C)', mode: 'lines', yaxis: 'y2', line: { color: '#38bdf8', width: 2 } }
         ], { ...base, yaxis2: { title: 'Temp (°C)', overlaying: 'y', side: 'right', showgrid: false }, xaxis: { ...base.xaxis, title: 'Timeline (72h)' }, yaxis: { ...base.yaxis, title: 'AQI / PM₂.₅' } }, cfg);
 
@@ -875,15 +1472,24 @@ class TerraPulseApp {
         ], { ...base, yaxis: { ...base.yaxis, title: 'Concentration (µg/m³)' } }, cfg);
 
       } else if (view === 'validation') {
-        const metaR = await fetch('/api/model/metadata');
-        const meta = (await metaR.json()).data || {};
-        const r2 = meta.metrics?.r2_score?.toFixed(4) || '0.9988';
-        const xs = [10, 30, 55, 80, 100, 130, 160, 200, 240, 290, 340, 400, 460];
-        const preds = xs.map(v => v + Math.sin(v * 0.07) * 4 + (Math.random() * 2 - 1) * 3);
-        Plotly.newPlot(container, [
-          { x: xs, y: xs, name: 'Ideal (1:1)', mode: 'lines', line: { color: '#4b5563', dash: 'dash' } },
-          { x: xs, y: preds, name: `Model (R²=${r2})`, mode: 'markers', marker: { color: '#a855f7', size: 10, symbol: 'diamond' } }
-        ], { ...base, xaxis: { ...base.xaxis, title: 'Observed AQI' }, yaxis: { ...base.yaxis, title: 'Predicted AQI' } }, cfg);
+        const response = await fetch('/api/model/metadata');
+        const result = await response.json();
+        if (!response.ok || result.status !== 'success') {
+          throw new Error(result.message || 'Estimate accuracy details are unavailable.');
+        }
+        const metrics = result.data?.metrics || {};
+        const meanError = Number(metrics.mae);
+        const testSamples = Number(result.data?.test_samples);
+        if (!Number.isFinite(meanError) || !Number.isFinite(testSamples)) {
+          throw new Error('Estimate accuracy details are incomplete.');
+        }
+        container.innerHTML =
+          `<section class="model-accuracy" aria-labelledby="model-accuracy-title">` +
+          `<h3 id="model-accuracy-title">How estimates were checked</h3>` +
+          `<p>The AQI estimator was tested using ${testSamples.toLocaleString()} historical records it had not trained on.</p>` +
+          `<p>On those records, estimates were typically about <strong>${meanError.toFixed(1)} AQI points</strong> away from the recorded AQI.</p>` +
+          `<p class="model-accuracy-note">This describes past test results; it does not guarantee the accuracy of every estimate or forecast.</p>` +
+          `</section>`;
 
       } else if (view === 'marine') {
         const resp = await fetch(`/api/marine/history?lat=${lat}&lon=${lon}&days=7`);
@@ -934,8 +1540,7 @@ class TerraPulseApp {
           this._setText('sim-result-aqi', d.predicted_aqi);
           this._setText('sim-result-cat', d.category.name);
           this._setStyle('sim-result-cat', 'color', d.category.color);
-          this._setText('sim-result-dominant', `Dominant: ${d.dominant_pollutant}`);
-          this._setText('sim-result-conf', `CI: [${d.model_confidence_interval[0]} – ${d.model_confidence_interval[1]}]`);
+          this._setText('sim-result-dominant', `Largest influence: ${d.dominant_pollutant}`);
         }
       } catch { }
     };

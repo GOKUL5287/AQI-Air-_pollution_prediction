@@ -17,8 +17,7 @@ matplotlib
 seaborn
 plotly
 
-# Collab / VS Code notebooks
-google-colab
+# VS Code notebooks (Colab provides its own google.colab module)
 ipykernel
 
 # Streamlit dashboard
@@ -29,5 +28,5 @@ folium
 streamlit-folium
 
 # Deep learning / forecasting (torch: CPU build)
-torch==2.14.1
-prophet==1.5.0
+torch==2.8.0
+prophet==1.3.0
