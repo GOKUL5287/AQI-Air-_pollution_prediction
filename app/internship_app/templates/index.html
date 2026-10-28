@@ -43,6 +43,16 @@
   <div class="scene-overlay" id="overlay-globe"></div>
   <canvas id="cloud-effect-canvas" aria-hidden="true"></canvas>
 
+  <button class="scroll-steering" id="scroll-steering" type="button"
+    aria-label="Scroll to the next section" title="Scroll down">
+    <svg viewBox="0 0 100 100" aria-hidden="true">
+      <circle class="steering-rim" cx="50" cy="50" r="38" />
+      <circle class="steering-hub" cx="50" cy="50" r="9" />
+      <path d="M50 41V16M43 48 20 63M57 48l23 15" />
+      <path class="steering-grip" d="M50 12a38 38 0 0 1 32.9 19M12 50a38 38 0 0 0 19 32.9" />
+    </svg>
+  </button>
+
   <button class="map-launcher" id="map-launcher" type="button" aria-label="Open station map"
     aria-haspopup="dialog" title="Open station map">
     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">

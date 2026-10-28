@@ -242,6 +242,11 @@ class SceneDirector {
       end: 'bottom bottom',
       scrub: 0.25,
       onUpdate: (self) => {
+        const steeringWheel = document.querySelector('#scroll-steering svg');
+        if (steeringWheel) {
+          steeringWheel.style.transform = `rotate(${(self.progress * 1080).toFixed(2)}deg)`;
+        }
+
         const frame = this.fe.seekProgress(self.progress);
         if (frame === previousFrame) return;
         previousFrame = frame;
@@ -1567,5 +1572,16 @@ class TerraPulseApp {
    BOOT
    ───────────────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
+  const steering = document.getElementById('scroll-steering');
+  const steeringWheel = steering?.querySelector('svg');
+
+  if (steering && steeringWheel) {
+    steering.addEventListener('click', () => {
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const nextScroll = Math.min(maxScroll, window.scrollY + window.innerHeight * 0.78);
+      window.scrollTo({ top: nextScroll, behavior: 'smooth' });
+    });
+  }
+
   window.app = new TerraPulseApp();
 });
