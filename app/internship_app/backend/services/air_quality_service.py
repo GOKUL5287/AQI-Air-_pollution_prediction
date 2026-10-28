@@ -226,6 +226,108 @@ class AirQualityService:
         return {"data": normalized, "total": total, "page": page, "limit": limit, "localities": localities}
 
     @classmethod
+    def get_openaq_global_locations(cls, page: int = 1, limit: int = 1000) -> Dict[str, Any]:
+        limit = max(1, min(int(limit), 1000))
+        page = max(1, int(page))
+        if not cls.API_KEY:
+            from .geography_service import GeographyService
+            locations = []
+            for country in GeographyService.get_countries():
+                for city in GeographyService.get_cities(country["code"]):
+                    locations.append({
+                        "station_id": str(city.get("station_id", "")),
+                        "name": city.get("station_name") or city["name"],
+                        "station_name": city.get("station_name") or city["name"],
+                        "city": city["name"],
+                        "locality": city.get("state_name", ""),
+                        "country": city.get("country_name", country["name"]),
+                        "country_code": city.get("country_code", country["code"]),
+                        "lat": city["lat"],
+                        "lon": city["lon"],
+                        "is_coastal": city.get("is_coastal", False),
+                        "datetime_last": None,
+                        "parameters": [],
+                        "provider": "Built-in reference station",
+                    })
+            start = (page - 1) * limit
+            data = locations[start:start + limit]
+            return {
+                "data": data,
+                "total": len(locations),
+                "page_count": len(data),
+                "page": page,
+                "limit": limit,
+            }
+
+        cache_key = f"openaq_global_locations_{page}_{limit}"
+        now = time.time()
+        cached = cls._cache.get(cache_key)
+        if cached and now - cached["timestamp"] < cls.CACHE_TTL:
+            locations = cached["data"]
+            total = cached["total"]
+        else:
+            payload = cls._request_openaq("locations", {
+                "page": page, "limit": limit, "isMobile": "false"
+            })
+            locations = payload.get("results", [])
+            total = payload.get("meta", {}).get("found", len(locations))
+            cls._cache[cache_key] = {
+                "timestamp": now,
+                "data": locations,
+                "total": total,
+            }
+
+        normalized = []
+        for item in locations:
+            coordinates = item.get("coordinates") or {}
+            lat, lon = coordinates.get("latitude"), coordinates.get("longitude")
+            if lat is None or lon is None:
+                continue
+            country = item.get("country") or {}
+            locality = str(item.get("locality") or "").strip()
+            if locality.casefold() in {
+                country.get("name", "").casefold(),
+                country.get("code", "").casefold(),
+                "unspecified locality",
+            }:
+                locality = ""
+            name = item.get("name") or "OpenAQ monitoring station"
+            normalized.append({
+                "station_id": str(item.get("id", "")),
+                "name": name,
+                "station_name": name,
+                "city": locality or name,
+                "locality": locality,
+                "country": country.get("name", ""),
+                "country_code": country.get("code", ""),
+                "lat": float(lat),
+                "lon": float(lon),
+                "is_coastal": False,
+                "is_monitor": item.get("isMonitor"),
+                "datetime_last": (item.get("datetimeLast") or {}).get("utc"),
+                "parameters": list(dict.fromkeys(
+                    sensor.get("parameter", {}).get("name", "")
+                    for sensor in item.get("sensors", [])
+                    if sensor.get("parameter", {}).get("name")
+                )),
+                "provider": (item.get("provider") or {}).get("name"),
+            })
+        normalized.sort(
+            key=lambda item: (
+                item.get("country", "").casefold(),
+                item.get("city", "").casefold(),
+                item["station_name"].casefold(),
+            )
+        )
+        return {
+            "data": normalized,
+            "total": total,
+            "page_count": len(locations),
+            "page": page,
+            "limit": limit,
+        }
+
+    @classmethod
     def get_openaq_localities(cls, country_code: str) -> List[str]:
         first_page = cls.get_openaq_locations(country_code, page=1, limit=1000)
         all_localities = set(first_page["localities"])
@@ -331,11 +433,17 @@ class AirQualityService:
             return None
 
     @classmethod
-    def get_station_air_quality(cls, lat: float, lon: float, station_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_station_air_quality(
+        cls,
+        lat: float,
+        lon: float,
+        station_id: Optional[str] = None,
+        force_refresh: bool = False,
+    ) -> Dict[str, Any]:
         cache_key = f"aq_{lat:.3f}_{lon:.3f}_{station_id}"
         now = time.time()
 
-        if cache_key in cls._cache:
+        if not force_refresh and cache_key in cls._cache:
             entry = cls._cache[cache_key]
             if now - entry["timestamp"] < cls.CACHE_TTL:
                 return entry["data"]
@@ -370,12 +478,36 @@ class AirQualityService:
             payload = cls._request_openaq("locations", {
                 "coordinates": f"{lat},{lon}",
                 "radius": 25000,
-                "limit": 1,
+                "limit": 5,
             })
-            locations = payload.get("results", [])
-            if locations:
-                latest_payload = cls._request_openaq(f"locations/{locations[0]['id']}/latest", {"limit": 1000})
-                result = cls._format_openaq_station(locations[0], latest_payload.get("results", []))
+            locations = sorted(
+                payload.get("results", []),
+                key=lambda location: (location.get("datetimeLast") or {}).get("utc") or "",
+                reverse=True,
+            )
+            nearest_result = None
+            for location in locations:
+                latest_payload = cls._request_openaq(
+                    f"locations/{location['id']}/latest", {"limit": 1000}
+                )
+                result = cls._format_openaq_station(
+                    location, latest_payload.get("results", [])
+                )
+                if nearest_result is None:
+                    nearest_result = result
+                if result.get("observed_measurements"):
+                    result["coordinates"] = {
+                        "lat": result["coordinates"].get("lat") or lat,
+                        "lon": result["coordinates"].get("lon") or lon,
+                    }
+                    cls._cache[cache_key] = {"timestamp": now, "data": result}
+                    return result
+            if nearest_result:
+                result = nearest_result
+                result["coordinates"] = {
+                    "lat": result["coordinates"].get("lat") or lat,
+                    "lon": result["coordinates"].get("lon") or lon,
+                }
                 cls._cache[cache_key] = {"timestamp": now, "data": result}
                 return result
         except (requests.RequestException, ValueError, RuntimeError, TypeError, KeyError):

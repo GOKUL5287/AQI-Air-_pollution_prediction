@@ -17,6 +17,8 @@ TerraPulse was built to bring real-world environmental science to life through a
 - **Dedicated Ocean & Seawater Quality Intelligence:** Physical ocean dynamics (Sea Surface Temperature, wave height, wave period, current velocity) and Copernicus CMEMS biogeochemistry (Salinity, Dissolved Oxygen, ocean acidification pH, Chlorophyll-a). **Strictly isolated from the atmospheric AQI model.**
 - **Interactive Global Exploration:** Seamless toggle between **3D Globe Mode** (with raycasted station pins) and **Interactive Flat Map Mode**, instant search autocomplete across countries, states, and cities.
 - **Scientific Analytics:** High-performance Plotly charts for 72-hour forecasts, pollutant time series, observed-versus-predicted validation curves, and 7-day marine trends.
+- **Integrated Seasonal Insights:** Historical city AQI, seasonal pollutant profiles, weather summaries, daily AQI calendar, and data-completeness charts in the main cinematic app.
+- **Full-Screen Sensor Map:** A persistent map control opens a worldwide, full-screen OpenAQ sensor map with search, marker readings, mouse-wheel zoom, and touch pinch-to-zoom.
 
 ---
 
@@ -103,11 +105,13 @@ internship_app/
 | `GET /api/regions/countries` | `GET` | List all supported countries and summary telemetry. |
 | `GET /api/regions/<country>/states` | `GET` | List states/provinces for a given country code. |
 | `GET /api/regions/<country>/stations?page=1&limit=1000&state=` | `GET` | Page through OpenAQ monitoring locations by country and provider-supplied locality. |
+| `GET /api/regions/stations?page=1&limit=1000` | `GET` | Page through worldwide OpenAQ monitoring locations with coordinates and available sensor types. |
 | `GET /api/regions/<country>/cities` | `GET` | List built-in reference cities for a country. |
 | `GET /api/regions/search?q={query}` | `GET` | Autocomplete search across countries, states, and stations. |
 | `GET /api/weather/current?lat=&lon=` | `GET` | Real-time Open-Meteo weather variables. |
 | `GET /api/weather/forecast?lat=&lon=&hours=72` | `GET` | 72-hour hourly weather forecast. |
-| `GET /api/air-quality/current?lat=&lon=&station_id=` | `GET` | OpenAQ ground station criteria pollutants. |
+| `GET /api/air-quality/live-status` | `GET` | Reports whether an OpenAQ key is configured (never returns the key). |
+| `GET /api/air-quality/current?lat=&lon=&station_id=&refresh=1` | `GET` | Latest OpenAQ station pollutants; `refresh=1` bypasses the server cache. |
 | `GET /api/air-quality/history?lat=&lon=&hours=24` | `GET` | 24-hour historical pollutant trend. |
 | `POST /api/aqi/predict` | `POST` | Execute ML inference on custom 13-feature inputs. |
 | `GET /api/aqi/timeline-forecast?lat=&lon=&hours=72` | `GET` | 72-hour ML-predicted AQI timeline with weather inputs. |
@@ -116,6 +120,7 @@ internship_app/
 | `GET /api/health/advisory?aqi=&dominant_pollutant=` | `GET` | Evidence-based health guidance and alerts. |
 | `GET /api/model/metadata` | `GET` | Model hyperparameters, training provenance, and evaluation metrics. |
 | `GET /api/station/overview?lat=&lon=&station_id=` | `GET` | Complete synchronized telemetry payload for any location. |
+| `GET /api/analytics/seasonal?city=&year=` | `GET` | Historical AQI, seasonal pollutant and weather summaries, daily AQI, and data completeness for a city. |
 
 ---
 
@@ -126,24 +131,31 @@ internship_app/
 - Modern WebGL-capable web browser (Chrome, Edge, Firefox, Safari)
 
 ### Setup Instructions
-1. **Clone or navigate to the workspace directory:**
+1. **Navigate to the repository root:**
    ```bash
-   cd "c:\Users\Aravind MU\.gemini\antigravity\scratch\internship_app"
+   cd AQI-Air-_pollution_prediction
    ```
 
-2. **Install Python dependencies:**
+2. **Create an app environment and install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   python3 -m venv .venv
+   source .venv/bin/activate
+   python -m pip install -r app/internship_app/requirements.txt
    ```
 
 3. **Configure environment variables:**
    ```bash
-   cp .env.example .env
+   cp app/internship_app/.env.example app/internship_app/.env
    ```
    Set `OPENAQ_API_KEY` in `.env` to enable live global country and station data. Without a key, the app uses a small built-in reference list; baseline pollutant inputs are labeled as fallback, not as observed readings. Open-Meteo requires no API key.
 
+   The sticky map shows the curated city locations (the original compact map), rather than plotting every OpenAQ station at once. Open a city marker to request the latest nearby OpenAQ sensor measurements. The popup's **Open seasonal dashboard** action closes the map and scrolls to Seasonal Insights, selecting the matching historical city when available. Readings are fetched on demand (not for every marker), cached for 15 minutes, and can be explicitly refreshed from the popup. Marker colors indicate whether a live observation is available; they do not represent an AQI category. Without an OpenAQ key, the map clearly labels reference/demo data and does not present it as live.
+
+   Seasonal Insights reads `data/station_hour_merged.parquet` from the repository root by default. Set `AQI_HISTORY_PATH` in `.env` if the file is elsewhere. The dashboard reports a clear unavailable state if the history file is missing.
+
 4. **Launch TerraPulse:**
    ```bash
+   cd app/internship_app
    python run_app.py
    ```
 
@@ -156,6 +168,14 @@ internship_app/
 ---
 
 ## 7. Data Provenance & Transparency Standards
+
+The Seasonal Insights panel uses city-filtered station-hour records from
+`station_hour_merged.parquet`. Seasonal pollutant profiles are normalized
+against each pollutant's own all-season mean; they are not AQI sub-indices or
+cross-pollutant health-risk rankings. Daily AQI values are means of available
+station-hour observations. Missing dates and readings remain visibly missing.
+The weather and pollution summaries are descriptive associations and do not
+establish health causation.
 
 Every data point in the user interface displays an official provenance badge:
 - `OBSERVED`: Live ground-station monitoring measurement.

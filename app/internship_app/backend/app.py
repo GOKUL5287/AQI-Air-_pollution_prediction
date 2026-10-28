@@ -5,6 +5,7 @@ Flask REST API Backend Server
 
 import os
 import sys
+from requests import RequestException
 from flask import Flask, request, jsonify, send_from_directory, render_template
 
 # Ensure backend folder is on python path
@@ -16,6 +17,7 @@ from services.air_quality_service import AirQualityService
 from services.marine_quality_service import MarineQualityService
 from services.aqi_model_service import AQIModelService
 from services.health_advisory_service import HealthAdvisoryService
+from services.seasonal_analytics_service import get_seasonal_summary
 
 app = Flask(
     __name__,
@@ -37,6 +39,17 @@ def add_cors_headers(response):
 def get_countries():
     countries = AirQualityService.get_openaq_countries()
     return jsonify({"status": "success", "data": countries, "total": len(countries)})
+
+@app.route("/api/regions/stations", methods=["GET"])
+def get_global_stations():
+    try:
+        result = AirQualityService.get_openaq_global_locations(
+            page=request.args.get("page", 1, type=int),
+            limit=request.args.get("limit", 1000, type=int),
+        )
+        return jsonify({"status": "success", **result})
+    except (RequestException, ValueError, RuntimeError, TypeError) as error:
+        return jsonify({"status": "error", "message": f"Unable to load global OpenAQ stations: {error}"}), 502
 
 @app.route("/api/regions/<country_code>/states", methods=["GET"])
 def get_states(country_code):
@@ -91,12 +104,26 @@ def get_weather_forecast():
 
 # --- AIR QUALITY ENDPOINTS ---
 
+@app.route("/api/air-quality/live-status", methods=["GET"])
+def get_air_quality_live_status():
+    return jsonify({
+        "status": "success",
+        "live_available": bool(AirQualityService.API_KEY),
+        "provider": "OpenAQ v3",
+    })
+
 @app.route("/api/air-quality/current", methods=["GET"])
 def get_current_air_quality():
     lat = float(request.args.get("lat", 28.6139))
     lon = float(request.args.get("lon", 77.2090))
     station_id = request.args.get("station_id")
-    aq_data = AirQualityService.get_station_air_quality(lat, lon, station_id)
+    refresh = request.args.get("refresh") == "1"
+    if refresh:
+        aq_data = AirQualityService.get_station_air_quality(
+            lat, lon, station_id, force_refresh=True
+        )
+    else:
+        aq_data = AirQualityService.get_station_air_quality(lat, lon, station_id)
     return jsonify({"status": "success", "data": aq_data})
 
 @app.route("/api/air-quality/history", methods=["GET"])
@@ -170,6 +197,20 @@ def get_health_advisory():
     temp = float(request.args.get("temp_c", 22.0))
     advisory = HealthAdvisoryService.get_air_health_advisory(aqi, dominant, temp)
     return jsonify({"status": "success", "data": advisory})
+
+# --- HISTORICAL SEASONAL ANALYTICS ---
+
+@app.route("/api/analytics/seasonal", methods=["GET"])
+def get_seasonal_analytics():
+    city = request.args.get("city")
+    year = request.args.get("year", type=int)
+    try:
+        summary = get_seasonal_summary(city, year)
+        return jsonify({"status": "success", "data": summary})
+    except FileNotFoundError as error:
+        return jsonify({"status": "error", "message": str(error)}), 503
+    except (RuntimeError, ValueError) as error:
+        return jsonify({"status": "error", "message": str(error)}), 422
 
 # --- COMPLETE STATION TELEMETRY OVERVIEW ---
 

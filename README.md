@@ -234,6 +234,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+The Colab runtime provides its own `google.colab` module; it is not a pip
+dependency for local installations.
+
 ## Run order (shared AQI data)
 
 The Colab workflow stores shared inputs under `AQI_DATA_DIR`; by default, local
