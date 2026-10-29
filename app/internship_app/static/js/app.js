@@ -1436,6 +1436,8 @@ class TerraPulseApp {
     const container = document.getElementById('plotly-timeline-chart');
     if (!container || !window.Plotly || !this.currentStation) return;
 
+    const forecastValues = document.getElementById('forecast-values');
+    if (forecastValues) forecastValues.hidden = view !== 'forecast72';
     container.style.height = view === 'validation' ? 'auto' : '480px';
     const { lat, lon, station_id } = this.currentStation;
     const base = {
@@ -1454,10 +1456,39 @@ class TerraPulseApp {
         const resp = await fetch(`/api/aqi/timeline-forecast?lat=${lat}&lon=${lon}&station_id=${station_id || ''}&hours=72`);
         const json = await resp.json();
         const tl = json.timeline || [];
+        if (!resp.ok || json.status !== 'success') {
+          throw new Error(json.message || 'The 72-hour AQI forecast is unavailable.');
+        }
+        if (!tl.length) {
+          throw new Error('The 72-hour AQI forecast contains no hourly predictions.');
+        }
         const times = tl.map(t => t.time);
         const aqiVals = tl.map(t => t.predicted_aqi);
         const pm25Vals = tl.map(t => t.estimated_pm25);
         const temps = tl.map(t => t.weather_inputs.temperature_c);
+        const forecastBody = document.getElementById('forecast-values-body');
+        const forecastCount = document.getElementById('forecast-values-count');
+        if (forecastBody) {
+          const dateFormatter = new Intl.DateTimeFormat(undefined, {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+          });
+          forecastBody.innerHTML = tl.map((point) => {
+            const timestamp = Date.parse(point.time);
+            const forecastTime = Number.isFinite(timestamp)
+              ? dateFormatter.format(new Date(timestamp))
+              : this._escapeHTML(point.time || 'Time unavailable');
+            const predictedAqi = Number(point.predicted_aqi);
+            const aqiText = Number.isFinite(predictedAqi) ? predictedAqi.toFixed(1) : '—';
+            const category = this._escapeHTML(point.category?.name || 'Unavailable');
+            const pollutant = this._escapeHTML(point.dominant_pollutant || '—');
+            return `<tr><td>${forecastTime}</td><td class="forecast-aqi-value">${aqiText}</td><td>${category}</td><td>${pollutant}</td></tr>`;
+          }).join('');
+        }
+        if (forecastCount) forecastCount.textContent = `${tl.length} hourly estimates`;
         Plotly.newPlot(container, [
           { x: times, y: aqiVals, name: 'Estimated AQI', mode: 'lines+markers', line: { color: '#00e5ff', width: 3 }, marker: { size: 5 } },
           { x: times, y: pm25Vals, name: 'Estimated PM₂.₅ (µg/m³)', mode: 'lines', line: { color: '#f59e0b', width: 2, dash: 'dot' } },
@@ -1528,16 +1559,6 @@ class TerraPulseApp {
           `<p class="model-accuracy-note">This describes past test results; it does not guarantee the accuracy of every estimate or forecast.</p>` +
           `</section>`;
 
-      } else if (view === 'marine') {
-        const resp = await fetch(`/api/marine/history?lat=${lat}&lon=${lon}&days=7`);
-        const json = await resp.json();
-        const tl = json.timeline || [];
-        const dates = tl.map(t => t.date);
-        Plotly.newPlot(container, [
-          { x: dates, y: tl.map(t => t.sea_surface_temp_c), name: 'SST (°C)', mode: 'lines', line: { color: '#0ea5e9', width: 2.5 } },
-          { x: dates, y: tl.map(t => t.dissolved_oxygen_mgl), name: 'DO (mg/L)', mode: 'lines', line: { color: '#38bdf8', width: 2 } },
-          { x: dates, y: tl.map(t => t.salinity_psu), name: 'Salinity (PSU)', mode: 'lines', yaxis: 'y2', line: { color: '#10b981', width: 2, dash: 'dot' } }
-        ], { ...base, yaxis2: { title: 'Salinity (PSU)', overlaying: 'y', side: 'right', showgrid: false }, yaxis: { ...base.yaxis, title: 'Temp / DO' } }, cfg);
       }
     } catch (e) {
       console.error('[TerraPulse] Chart error:', e);

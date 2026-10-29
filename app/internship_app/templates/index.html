@@ -594,7 +594,7 @@
             AQI forecasts and trends
           </div>
           <h2 class="section-title">Explore air quality forecasts</h2>
-          <p class="section-sub">View upcoming AQI estimates, recent pollutant levels, and ocean conditions. Forecasts are estimates, not guarantees.</p>
+          <p class="section-sub">View upcoming AQI estimates and recent pollutant levels. Forecasts are estimates, not guarantees.</p>
         </div>
 
         <!-- Chart Section -->
@@ -603,9 +603,25 @@
             <button class="ctab active" data-chart-view="forecast72">72-Hour AQI Forecast</button>
             <button class="ctab" data-chart-view="pollutants">24-Hour Pollutant Trends</button>
             <button class="ctab" data-chart-view="validation">How close are estimates?</button>
-            <button class="ctab" data-chart-view="marine">7-Day Ocean Trends</button>
           </div>
           <div id="plotly-timeline-chart" style="height:480px;"></div>
+          <section class="forecast-values" id="forecast-values" aria-labelledby="forecast-values-title" hidden>
+            <div class="forecast-values-heading">
+              <div>
+                <h3 id="forecast-values-title">Hourly predicted AQI</h3>
+                <p>Model estimates for each hour in the selected 72-hour forecast.</p>
+              </div>
+              <span class="forecast-values-count" id="forecast-values-count"></span>
+            </div>
+            <div class="forecast-values-scroll" tabindex="0" aria-label="Hourly AQI prediction values">
+              <table class="forecast-values-table">
+                <thead>
+                  <tr><th scope="col">Forecast time</th><th scope="col">Predicted AQI</th><th scope="col">Category</th><th scope="col">Main pollutant</th></tr>
+                </thead>
+                <tbody id="forecast-values-body"></tbody>
+              </table>
+            </div>
+          </section>
         </div>
 
         <!-- AQI what-if simulator -->

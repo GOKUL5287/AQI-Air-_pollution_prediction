@@ -1687,6 +1687,91 @@ code {
   color: #fff;
 }
 
+.forecast-values {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(197, 221, 223, 0.16);
+}
+
+.forecast-values[hidden] {
+  display: none;
+}
+
+.forecast-values-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.forecast-values-heading h3 {
+  margin: 0;
+  color: var(--c-text);
+  font: 600 1.05rem var(--ff-display);
+}
+
+.forecast-values-heading p {
+  margin: 0.3rem 0 0;
+  color: var(--c-muted);
+  font-size: 0.82rem;
+}
+
+.forecast-values-count {
+  flex: 0 0 auto;
+  color: var(--c-muted);
+  font: 500 0.75rem var(--ff-mono);
+}
+
+.forecast-values-scroll {
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid rgba(197, 221, 223, 0.14);
+  border-radius: 12px;
+  scrollbar-color: rgba(182, 232, 229, 0.35) rgba(9, 20, 28, 0.45);
+}
+
+.forecast-values-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--c-text);
+  font-size: 0.84rem;
+  text-align: left;
+}
+
+.forecast-values-table th,
+.forecast-values-table td {
+  padding: 0.68rem 0.85rem;
+  border-bottom: 1px solid rgba(197, 221, 223, 0.1);
+  white-space: nowrap;
+}
+
+.forecast-values-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: var(--c-muted);
+  background: rgba(12, 25, 34, 0.98);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.forecast-values-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.forecast-values-table tbody tr:hover {
+  background: rgba(182, 232, 229, 0.06);
+}
+
+.forecast-aqi-value {
+  color: #b6e8e5;
+  font-family: var(--ff-mono);
+  font-weight: 600;
+}
+
 /* ML Simulator */
 .simulator-wrap {
   display: grid;
