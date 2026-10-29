@@ -2777,6 +2777,12 @@ code {
   line-height: 1.55;
 }
 
+.seasonal-controls,
+.seasonal-tabs,
+.seasonal-panel {
+  display: none !important;
+}
+
 @media (max-width: 760px) {
   .map-launcher {
     top: 0.8rem;
