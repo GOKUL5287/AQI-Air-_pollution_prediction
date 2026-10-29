@@ -272,6 +272,14 @@ def get_station_overview():
 def index():
     return render_template("index.html")
 
+
+@app.route("/seasonal-insights")
+def seasonal_insights():
+    streamlit_url = os.environ.get("SEASONAL_STREAMLIT_URL", "http://127.0.0.1:8501")
+    separator = "&" if "?" in streamlit_url else "?"
+    streamlit_url = f"{streamlit_url}{separator}embed=true"
+    return render_template("seasonal_insights.html", streamlit_url=streamlit_url)
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     print(f"Starting Air Quality Index backend on http://localhost:{port}")

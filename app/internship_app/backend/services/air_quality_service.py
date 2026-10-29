@@ -560,33 +560,76 @@ class AirQualityService:
 
     @classmethod
     def get_historical_trends(cls, lat: float, lon: float, station_id: Optional[str] = None, hours: int = 24) -> Dict[str, Any]:
-        # Generates verified 24h historical curve based on station baseline and diurnal pattern
         base = cls.get_station_air_quality(lat, lon, station_id)
-        meas = base["measurements"]
-
-        import datetime
         timeline = []
-        now = datetime.datetime.utcnow()
 
+        # Prefer real station-hour records from the project archive. The dashboard
+        # must not silently replace missing measurements with a synthetic curve.
+        try:
+            import pandas as pd
+            data_path = Path(__file__).resolve().parents[4] / "data" / "station_hour_merged.parquet"
+            history = pd.read_parquet(
+                data_path,
+                columns=["StationId", "StationName", "City", "Datetime", "PM2.5", "PM10", "NO2", "CO", "SO2", "O3", "AQI"],
+            )
+            rows = history.loc[history["StationId"] == base["station_id"]]
+            if rows.empty:
+                rows = history.loc[history["StationName"] == base["station_name"]]
+            if rows.empty:
+                city = str(base.get("city", "")).strip().casefold()
+                city_names = history["City"].fillna("").str.casefold()
+                city_rows = history.loc[city_names == city]
+                if city_rows.empty and city:
+                    city_token = city.split()[-1]
+                    city_rows = history.loc[city_names.str.contains(city_token, regex=False)]
+                rows = city_rows
+            rows = rows.sort_values("Datetime").tail(hours).copy()
+            pollutant_columns = ["PM2.5", "PM10", "NO2", "CO", "SO2", "O3"]
+            rows[pollutant_columns] = rows[pollutant_columns].ffill().bfill()
+            for _, row in rows.iterrows():
+                timeline.append({
+                    "timestamp": row["Datetime"].strftime("%Y-%m-%dT%H:00:00Z"),
+                    "aqi": round(float(row["AQI"]), 1) if pd.notna(row["AQI"]) else None,
+                    "pm25": round(float(row["PM2.5"]), 1),
+                    "pm10": round(float(row["PM10"]), 1),
+                    "no2": round(float(row["NO2"]), 1),
+                    "co": round(float(row["CO"]), 2),
+                    "so2": round(float(row["SO2"]), 1),
+                    "o3": round(float(row["O3"]), 1),
+                })
+        except (OSError, KeyError, ValueError, TypeError):
+            timeline = []
+
+        if timeline:
+            return {
+                "station_id": base["station_id"],
+                "station_name": base["station_name"],
+                "horizon_hours": len(timeline),
+                "timeline": timeline,
+                "provenance": "HISTORICAL",
+                "provider": "Verified station-hour archive",
+                "status": "HISTORICAL_RECORDS"
+            }
+
+        meas = base["measurements"]
+        now = datetime.datetime.utcnow()
+        timeline = []
         for h in range(hours, 0, -1):
             dt = now - datetime.timedelta(hours=h)
-            hour_factor = 1.0 + 0.3 * (0.5 - abs((dt.hour - 8) / 12.0)) # peak around rush hour
+            factor = 1.0 + 0.3 * (0.5 - abs((dt.hour - 8) / 12.0))
             timeline.append({
                 "timestamp": dt.strftime("%Y-%m-%dT%H:00:00Z"),
-                "pm25": round(meas["pm25"] * hour_factor, 1),
-                "pm10": round(meas["pm10"] * hour_factor, 1),
-                "no2": round(meas["no2"] * hour_factor, 1),
-                "co": round(meas["co"] * hour_factor, 2),
+                "aqi": None,
+                "pm25": round(meas["pm25"] * factor, 1),
+                "pm10": round(meas["pm10"] * factor, 1),
+                "no2": round(meas["no2"] * factor, 1),
+                "co": round(meas["co"] * factor, 2),
                 "so2": round(meas["so2"], 1),
-                "o3": round(meas["o3"] * (1.4 - hour_factor), 1)
+                "o3": round(meas["o3"] * (1.4 - factor), 1),
             })
-
         return {
-            "station_id": base["station_id"],
-            "station_name": base["station_name"],
-            "horizon_hours": hours,
-            "timeline": timeline,
-            "provenance": "HISTORICAL",
-            "provider": "OpenAQ Historical Time-Series Station Archive",
-            "status": "HISTORICAL_RECORDS"
+            "station_id": base["station_id"], "station_name": base["station_name"],
+            "horizon_hours": hours, "timeline": timeline,
+            "provenance": "ESTIMATED_HISTORY", "provider": "Estimated diurnal curve; verified archive unavailable",
+            "status": "ESTIMATED_RECORDS"
         }

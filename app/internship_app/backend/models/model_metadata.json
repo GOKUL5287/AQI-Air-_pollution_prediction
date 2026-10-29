@@ -1,8 +1,8 @@
 {
-  "model_name": "TerraPulse Gradient Boosting AQI Regressor",
-  "framework": "scikit-learn (HistGradientBoostingRegressor)",
-  "training_samples": 768408,
-  "test_samples": 135602,
+  "model_name": "TerraPulse LSTM AQI Regressor",
+  "framework": "PyTorch LSTM",
+  "training_samples": 12000,
+  "test_samples": 12000,
   "features": [
     "PM2.5",
     "PM10",
@@ -54,11 +54,13 @@
     500
   ],
   "metrics": {
-    "mae": 1.356768789294017,
-    "rmse": 4.3390404645340475,
-    "r2_score": 0.998848177364207
+    "mae": 17.641586,
+    "rmse": 33.714321,
+    "r2_score": 0.661795
   },
-  "preprocessing": "StandardScaler (scikit-learn)",
-  "training_date": "2026-10-16",
-  "dataset_source": "OpenAQ Ground Station Records + Open-Meteo Historical Weather (904,010 samples)"
+  "preprocessing": "StandardScaler (scikit-learn) + 24-hour LSTM sequence",
+  "training_date": "2026-10-28",
+  "dataset_source": "Indian station-hour AQI + weather observations",
+  "artifact": "aqi_lstm.pt",
+  "sequence_length": 24
 }

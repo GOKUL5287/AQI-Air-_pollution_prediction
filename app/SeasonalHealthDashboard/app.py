@@ -16,21 +16,21 @@ except Exception:  # scipy is optional – p-values are skipped without it
 # PAGE CONFIG
 # ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Air Quality & Respiratory Health Dashboard",
-    page_icon="",
+    page_title="Seasonal Health Insights | TerraPulse",
+    page_icon="🌍",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ──────────────────────────────────────────────────────────────
 # DESIGN TOKENS
 # ──────────────────────────────────────────────────────────────
-BG = "#0b1020"
-CARD = "#131a2e"
-BORDER = "#222c4a"
-TEXT = "#e2e8f0"
-MUTED = "#94a3b8"
-GRID = "rgba(148,163,184,0.12)"
+BG = "#09151d"
+CARD = "#102129"
+BORDER = "rgba(182, 232, 229, 0.16)"
+TEXT = "#eef8f7"
+MUTED = "#94aeb3"
+GRID = "rgba(182, 232, 229, 0.10)"
 
 CYAN, VIOLET, PINK = "#22d3ee", "#a78bfa", "#f472b6"
 AMBER, GREEN, BLUE = "#fbbf24", "#34d399", "#60a5fa"
@@ -63,12 +63,19 @@ PATHOGEN_FIX = {"Rhinovirus/Enteroviru": "Rhinovirus/Enterovirus"}  # truncated 
 st.markdown(
     f"""
     <style>
-    [data-testid="stAppViewContainer"] {{ background: {BG}; }}
-    [data-testid="stSidebar"] {{ background: #0f1530; border-right: 1px solid {BORDER}; }}
-    [data-testid="stHeader"] {{ background: transparent; }}
-    .block-container {{ padding-top: 2rem; max-width: 1400px; }}
+    [data-testid="stAppViewContainer"] {{ background: radial-gradient(circle at 20% 0%, rgba(182,232,229,.07), transparent 28%), {BG}; }}
+    [data-testid="stSidebar"] {{ background: rgba(10, 24, 32, .98); border-right: 1px solid {BORDER}; width: 285px; }}
+    [data-testid="stSidebar"][aria-expanded="true"] {{ width: 285px; max-width: 285px; }}
+    [data-testid="stSidebar"] > div:first-child {{ width: 285px; }}
+    [data-testid="stSidebarCollapsedControl"] {{ background: {CARD}; border: 1px solid {BORDER}; border-radius: 10px; color: {CYAN}; top: 12px; left: 12px; }}
+    [data-testid="stToolbar"] {{ visibility: hidden; }}
+    [data-testid="stStatusWidget"] {{ visibility: hidden; }}
+    [data-testid="stHeader"] {{ background: transparent; height: 0; }}
+    [data-testid="stMainBlockContainer"] {{ padding-top: 1.25rem; }}
+    .block-container {{ padding: 1.25rem 2.25rem 3rem; max-width: 1480px; }}
+    .stApp {{ font-family: "DM Sans", "Segoe UI", sans-serif; }}
 
-    h1 {{ color: {TEXT}; font-weight: 700; letter-spacing: -0.5px; }}
+    h1 {{ color: {TEXT}; font-family: Outfit, "DM Sans", sans-serif; font-weight: 700; letter-spacing: -0.5px; }}
     h2, h3 {{ color: {TEXT}; font-weight: 600; }}
     p, label, span {{ color: {TEXT}; }}
 
@@ -270,7 +277,7 @@ st.sidebar.download_button("⬇️ Download monthly table", monthly.to_csv(index
 # ──────────────────────────────────────────────────────────────
 # HEADER
 # ──────────────────────────────────────────────────────────────
-st.title(" Air Quality & Respiratory Health Dashboard")
+st.title("Seasonal Health Intelligence")
 st.markdown('<p class="subtitle">Seasonal pollution patterns, dominant pollutants and their link '
             'to respiratory pathogen activity</p>', unsafe_allow_html=True)
 
