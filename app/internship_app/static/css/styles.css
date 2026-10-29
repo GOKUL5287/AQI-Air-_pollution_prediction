@@ -1641,8 +1641,8 @@ code {
   box-shadow: 0 20px 60px rgba(2, 8, 20, 0.58);
 }
 
-#plotly-timeline-chart > .chart-loading,
-#plotly-timeline-chart > .chart-empty {
+#plotly-timeline-chart>.chart-loading,
+#plotly-timeline-chart>.chart-empty {
   min-height: 420px;
   display: grid;
   place-items: center;
@@ -1653,7 +1653,7 @@ code {
   border-radius: 18px;
 }
 
-#plotly-timeline-chart > .chart-error {
+#plotly-timeline-chart>.chart-error {
   color: #ffb4a8;
   border-color: rgba(255, 180, 168, 0.22);
 }
@@ -2210,11 +2210,12 @@ code {
 /* Pirate ship helm — intentionally transparent outside the wheel so it covers the blue marker. */
 .scroll-steering {
   position: fixed;
-  right: max(-0.85rem, env(safe-area-inset-right));
-  bottom: max(3.25rem, env(safe-area-inset-bottom));
+  right: calc(9.1vw - (100vw - 100%));
+  bottom: calc(50vh - 19.1vw);
   z-index: 470;
-  width: clamp(112px, 8.4vw, 132px);
+  width: min(clamp(64px, 8.4vw, 132px), 32vh, calc(100vh - 38.4vw));
   aspect-ratio: 1;
+  transform: translate(50%, 50%);
   display: grid;
   place-items: center;
   margin: 0;
@@ -2227,8 +2228,7 @@ code {
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
   filter:
-    drop-shadow(0 8px 8px rgba(0, 0, 0, 0.92))
-    drop-shadow(0 0 10px rgba(31, 115, 149, 0.22));
+    drop-shadow(0 8px 8px rgba(0, 0, 0, 0.92)) drop-shadow(0 0 10px rgba(31, 115, 149, 0.22));
 }
 
 .scroll-steering svg {
@@ -2243,7 +2243,7 @@ code {
   will-change: transform;
 }
 
-.scroll-steering svg > * {
+.scroll-steering svg>* {
   display: none;
 }
 
@@ -2327,8 +2327,7 @@ code {
 
 .scroll-steering:hover {
   filter:
-    drop-shadow(0 10px 11px rgba(0, 0, 0, 0.96))
-    drop-shadow(0 0 14px rgba(79, 190, 222, 0.5));
+    drop-shadow(0 10px 11px rgba(0, 0, 0, 0.96)) drop-shadow(0 0 14px rgba(79, 190, 222, 0.5));
 }
 
 .scroll-steering:focus-visible {
@@ -2338,9 +2337,14 @@ code {
 
 @media (max-width: 640px) {
   .scroll-steering {
-    right: max(0.8rem, env(safe-area-inset-right));
-    bottom: max(0.8rem, env(safe-area-inset-bottom));
     width: 88px;
+  }
+}
+
+@media (max-width: 640px) and (orientation: portrait) {
+  .scroll-steering {
+    right: 15vw;
+    bottom: 20vh;
   }
 }
 
@@ -2741,7 +2745,7 @@ code {
   font: 650 1rem var(--ff-display);
 }
 
-.seasonal-chart-card > p {
+.seasonal-chart-card>p {
   min-height: 2.3rem;
   margin-top: 0.2rem;
   color: var(--c-muted);
@@ -2787,10 +2791,7 @@ code {
   .map-dialog-header {
     min-height: 6.5rem;
     padding:
-      max(0.65rem, env(safe-area-inset-top))
-      max(3.75rem, env(safe-area-inset-right))
-      1.75rem
-      max(3.75rem, env(safe-area-inset-left));
+      max(0.65rem, env(safe-area-inset-top)) max(3.75rem, env(safe-area-inset-right)) 1.75rem max(3.75rem, env(safe-area-inset-left));
   }
 
   .map-dialog-header h2 {
@@ -2855,7 +2856,7 @@ code {
     grid-template-columns: 1fr;
   }
 
-  .seasonal-chart-card > p {
+  .seasonal-chart-card>p {
     min-height: 0;
   }
 
