@@ -1,13 +1,12 @@
 """
 TerraPulse AQI Machine Learning Inference Service
-Loads and executes the trained PyTorch LSTM and scaler on 24-hour sequences of 13 features:
+Loads the trained PyTorch LSTM and executes inference on raw 24-hour sequences of 13 features:
 ['PM2.5', 'PM10', 'NO2', 'CO', 'SO2', 'O3', 'Temperature_C', 'Relative_Humidity_pct', 'Wind_Speed_kmh', 'Hour', 'DayOfWeek', 'Month', 'DayOfYear']
 Computes standard EPA / CPCB breakpoints, model predictions, confidence bounds, and multi-step forecasts.
 """
 
 import os
 import json
-import joblib
 import numpy as np
 import datetime
 import torch
@@ -32,7 +31,6 @@ class AQILSTM(nn.Module):
 
 class AQIModelService:
     _model = None
-    _scaler = None
     _metadata = None
     _is_loaded = False
 
@@ -44,16 +42,14 @@ class AQIModelService:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         models_dir = os.path.join(base_dir, "models")
         model_path = os.path.join(models_dir, "aqi_lstm.pt")
-        scaler_path = os.path.join(models_dir, "scaler.joblib")
         meta_path = os.path.join(models_dir, "model_metadata.json")
 
-        if os.path.exists(model_path) and os.path.exists(scaler_path):
+        if os.path.exists(model_path):
             checkpoint = torch.load(model_path, map_location="cpu", weights_only=True)
             cls._model = AQILSTM(checkpoint["input_size"], checkpoint["hidden_size"])
             cls._model.load_state_dict(checkpoint["model_state_dict"])
             cls._model.eval()
             cls._sequence_length = checkpoint["sequence_length"]
-            cls._scaler = joblib.load(scaler_path)
             if os.path.exists(meta_path):
                 with open(meta_path, 'r', encoding='utf-8') as f:
                     cls._metadata = json.load(f)
@@ -189,8 +185,8 @@ class AQIModelService:
             hour, day_of_week, month, day_of_year
         ]])
 
-        scaled_vector = cls._scaler.transform(feature_vector).astype(np.float32)
-        sequence = np.repeat(scaled_vector[:, None, :], cls._sequence_length, axis=1)
+        raw_vector = feature_vector.astype(np.float32)
+        sequence = np.repeat(raw_vector[:, None, :], cls._sequence_length, axis=1)
         with torch.inference_mode():
             predicted_val = float(cls._model(torch.from_numpy(sequence)).item())
         predicted_val = round(max(1.0, min(500.0, predicted_val)), 1)
