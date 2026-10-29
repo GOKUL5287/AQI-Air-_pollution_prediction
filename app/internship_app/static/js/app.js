@@ -1465,16 +1465,33 @@ class TerraPulseApp {
         ], { ...base, yaxis2: { title: 'Temp (°C)', overlaying: 'y', side: 'right', showgrid: false }, xaxis: { ...base.xaxis, title: 'Timeline (72h)' }, yaxis: { ...base.yaxis, title: 'AQI / PM₂.₅' } }, cfg);
 
       } else if (view === 'pollutants') {
+        container.innerHTML = '<div class="chart-loading">Loading 24-hour pollutant trends…</div>';
         const resp = await fetch(`/api/air-quality/history?lat=${lat}&lon=${lon}&station_id=${station_id || ''}&hours=24`);
         const json = await resp.json();
-        const tl = json.timeline || [];
+        if (!resp.ok || json.status === 'error') {
+          throw new Error(json.message || '24-hour pollutant history is unavailable.');
+        }
+
+        const tl = json.data?.timeline || json.timeline || [];
+        if (!tl.length) {
+          container.innerHTML = '<div class="chart-empty">No pollutant history is available for this station.</div>';
+          return;
+        }
+
         const times = tl.map(t => t.timestamp);
+        container.innerHTML = '';
         Plotly.newPlot(container, [
-          { x: times, y: tl.map(t => t.pm25), name: 'PM₂.₅', mode: 'lines', line: { color: '#ef4444', width: 2.5 } },
-          { x: times, y: tl.map(t => t.pm10), name: 'PM₁₀', mode: 'lines', line: { color: '#f97316', width: 2.5 } },
-          { x: times, y: tl.map(t => t.no2), name: 'NO₂', mode: 'lines', line: { color: '#38bdf8', width: 2 } },
-          { x: times, y: tl.map(t => t.o3), name: 'O₃', mode: 'lines', line: { color: '#10b981', width: 2 } }
-        ], { ...base, yaxis: { ...base.yaxis, title: 'Concentration (µg/m³)' } }, cfg);
+          { x: times, y: tl.map(t => t.aqi), name: 'AQI', mode: 'lines+markers', connectgaps: true, line: { color: '#e9edf5', width: 3 }, marker: { size: 4 } },
+          { x: times, y: tl.map(t => t.pm25), name: 'PM₂.₅', mode: 'lines', connectgaps: true, line: { color: '#ef4444', width: 2.5 } },
+          { x: times, y: tl.map(t => t.pm10), name: 'PM₁₀', mode: 'lines', connectgaps: true, line: { color: '#f97316', width: 2.5 } },
+          { x: times, y: tl.map(t => t.no2), name: 'NO₂', mode: 'lines', connectgaps: true, line: { color: '#38bdf8', width: 2 } },
+          { x: times, y: tl.map(t => t.o3), name: 'O₃', mode: 'lines', connectgaps: true, line: { color: '#10b981', width: 2 } }
+        ], {
+          ...base,
+          title: { text: '24-hour AQI and pollutant history', font: { size: 15, color: '#d9e8ed' } },
+          xaxis: { ...base.xaxis, title: 'Hourly observations', type: 'date' },
+          yaxis: { ...base.yaxis, title: 'Concentration (µg/m³)', rangemode: 'tozero' }
+        }, cfg);
 
       } else if (view === 'validation') {
         const response = await fetch('/api/model/metadata');
@@ -1509,6 +1526,7 @@ class TerraPulseApp {
       }
     } catch (e) {
       console.error('[TerraPulse] Chart error:', e);
+      container.innerHTML = `<div class="chart-empty chart-error">${this._escapeHTML(e.message || 'Unable to load this chart.')}</div>`;
     }
   }
 

@@ -46,10 +46,67 @@
   <button class="scroll-steering" id="scroll-steering" type="button"
     aria-label="Scroll to the next section" title="Scroll down">
     <svg viewBox="0 0 100 100" aria-hidden="true">
-      <circle class="steering-rim" cx="50" cy="50" r="38" />
-      <circle class="steering-hub" cx="50" cy="50" r="9" />
-      <path d="M50 41V16M43 48 20 63M57 48l23 15" />
-      <path class="steering-grip" d="M50 12a38 38 0 0 1 32.9 19M12 50a38 38 0 0 0 19 32.9" />
+      <defs>
+        <radialGradient id="pirateHub" cx="35%" cy="28%">
+          <stop offset="0" stop-color="#dfbd7b" />
+          <stop offset="0.32" stop-color="#9d743d" />
+          <stop offset="0.72" stop-color="#553821" />
+          <stop offset="1" stop-color="#24170e" />
+        </radialGradient>
+        <linearGradient id="pirateWood" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#c48c55" />
+          <stop offset="0.18" stop-color="#70401f" />
+          <stop offset="0.48" stop-color="#a76a38" />
+          <stop offset="0.72" stop-color="#573019" />
+          <stop offset="1" stop-color="#b27a45" />
+        </linearGradient>
+      </defs>
+
+      <circle class="steering-shadow" cx="50" cy="50" r="38" />
+      <g class="steering-spokes">
+        <path d="M50 47 50 8" />
+        <path d="M50 47 50 8" transform="rotate(45 50 50)" />
+        <path d="M50 47 50 8" transform="rotate(90 50 50)" />
+        <path d="M50 47 50 8" transform="rotate(135 50 50)" />
+        <path d="M50 47 50 8" transform="rotate(180 50 50)" />
+        <path d="M50 47 50 8" transform="rotate(225 50 50)" />
+        <path d="M50 47 50 8" transform="rotate(270 50 50)" />
+        <path d="M50 47 50 8" transform="rotate(315 50 50)" />
+      </g>
+
+      <circle class="steering-rim steering-rim-outer" cx="50" cy="50" r="44" />
+      <circle class="steering-rim steering-rim-inner" cx="50" cy="50" r="34" />
+      <g class="rim-grain">
+        <path d="M13 35c14-4 22-11 34-23M6 53c17 1 25 5 40 13M31 91c8-17 17-25 28-36M67 92C61 75 58 67 58 55M94 62C79 60 70 54 57 43M93 36C78 39 68 39 57 37" />
+      </g>
+      <g class="rim-bolts">
+        <circle cx="50" cy="7" r="1.15" /><circle cx="50" cy="93" r="1.15" />
+        <circle cx="7" cy="50" r="1.15" /><circle cx="93" cy="50" r="1.15" />
+        <circle cx="19.5" cy="19.5" r="1.15" /><circle cx="80.5" cy="80.5" r="1.15" />
+        <circle cx="80.5" cy="19.5" r="1.15" /><circle cx="19.5" cy="80.5" r="1.15" />
+      </g>
+
+      <g class="steering-handles">
+        <rect x="46.3" y="1.5" width="7.4" height="16" rx="3.7" />
+        <rect x="46.3" y="82.5" width="7.4" height="16" rx="3.7" />
+        <rect x="46.3" y="1.5" width="7.4" height="16" rx="3.7" transform="rotate(45 50 50)" />
+        <rect x="46.3" y="82.5" width="7.4" height="16" rx="3.7" transform="rotate(45 50 50)" />
+        <rect x="46.3" y="1.5" width="7.4" height="16" rx="3.7" transform="rotate(90 50 50)" />
+        <rect x="46.3" y="82.5" width="7.4" height="16" rx="3.7" transform="rotate(90 50 50)" />
+        <rect x="46.3" y="1.5" width="7.4" height="16" rx="3.7" transform="rotate(135 50 50)" />
+        <rect x="46.3" y="82.5" width="7.4" height="16" rx="3.7" transform="rotate(135 50 50)" />
+      </g>
+
+      <path class="rope-wrap" d="M49 13c4 6 1 11-4 16M51 87c-4-6-1-11 4-16M13 51c6-4 11-1 16 4M87 49c-6 4-11 1-16-4" />
+      <circle class="steering-hub-ring" cx="50" cy="50" r="17" />
+      <circle class="steering-hub-plates" cx="50" cy="50" r="13" />
+      <circle class="steering-hub" cx="50" cy="50" r="8" />
+      <g class="hub-bolts">
+        <circle cx="50" cy="38.5" r="1.2" /><circle cx="61.5" cy="50" r="1.2" />
+        <circle cx="50" cy="61.5" r="1.2" /><circle cx="38.5" cy="50" r="1.2" />
+        <circle cx="58.1" cy="41.9" r="1.05" /><circle cx="58.1" cy="58.1" r="1.05" />
+        <circle cx="41.9" cy="58.1" r="1.05" /><circle cx="41.9" cy="41.9" r="1.05" />
+      </g>
     </svg>
   </button>
 
@@ -132,7 +189,7 @@
               </svg>
             </a>
             <a href="#scene-command" class="btn-outline">AQI Forecasts ↗</a>
-            <a href="#scene-seasonal" class="btn-outline">Seasonal Insights ↗</a>
+            <a href="/seasonal-insights" class="btn-outline" target="_blank" rel="noopener">Seasonal Insights ↗</a>
           </div>
         </div>
 
@@ -612,6 +669,9 @@
           <div class="tag-pill tag-purple">Historical AQI · Seasonal Health</div>
           <h2 class="section-title">Seasonal Air Quality Insights</h2>
           <p class="section-sub">Explore historical AQI, pollutant patterns, and weather context using station-hour records. These are environmental associations, not evidence of health causation.</p>
+          <a class="seasonal-open-page" href="/seasonal-insights" target="_blank" rel="noopener">
+            Open the full respiratory &amp; seasonal intelligence page <span aria-hidden="true">↗</span>
+          </a>
         </div>
 
         <div class="seasonal-controls">

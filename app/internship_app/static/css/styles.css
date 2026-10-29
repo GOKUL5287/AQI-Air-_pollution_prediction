@@ -1641,6 +1641,23 @@ code {
   box-shadow: 0 20px 60px rgba(2, 8, 20, 0.58);
 }
 
+#plotly-timeline-chart > .chart-loading,
+#plotly-timeline-chart > .chart-empty {
+  min-height: 420px;
+  display: grid;
+  place-items: center;
+  color: var(--c-muted);
+  font-size: 0.9rem;
+  text-align: center;
+  border: 1px dashed rgba(182, 232, 229, 0.14);
+  border-radius: 18px;
+}
+
+#plotly-timeline-chart > .chart-error {
+  color: #ffb4a8;
+  border-color: rgba(255, 180, 168, 0.22);
+}
+
 .chart-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -2190,78 +2207,141 @@ code {
   text-shadow: 0 2px 16px rgba(2, 8, 13, 0.62);
 }
 
-/* Scroll steering wheel — floats over the persistent bottom-right control. */
+/* Pirate ship helm — intentionally transparent outside the wheel so it covers the blue marker. */
 .scroll-steering {
   position: fixed;
-  right: max(1rem, env(safe-area-inset-right));
-  bottom: max(1rem, env(safe-area-inset-bottom));
+  right: max(-0.85rem, env(safe-area-inset-right));
+  bottom: max(3.25rem, env(safe-area-inset-bottom));
   z-index: 470;
-  width: clamp(78px, 8.5vw, 104px);
+  width: clamp(112px, 8.4vw, 132px);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
   margin: 0;
-  padding: 4px;
-  border: 1px solid rgba(125, 222, 249, 0.55);
+  padding: 0;
+  border: 0;
   border-radius: 50%;
-  color: #cdeaf2;
-  background:
-    radial-gradient(circle at 35% 28%, rgba(220, 246, 250, 0.2), transparent 28%),
-    linear-gradient(145deg, rgba(21, 39, 48, 0.98), rgba(3, 9, 15, 0.98));
-  box-shadow:
-    0 14px 38px rgba(0, 0, 0, 0.58),
-    0 0 0 8px rgba(51, 163, 204, 0.09),
-    inset 0 0 18px rgba(93, 218, 239, 0.12);
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
   pointer-events: auto;
   -webkit-tap-highlight-color: transparent;
+  filter:
+    drop-shadow(0 8px 8px rgba(0, 0, 0, 0.92))
+    drop-shadow(0 0 10px rgba(31, 115, 149, 0.22));
 }
 
 .scroll-steering svg {
   width: 100%;
   height: 100%;
-  overflow: visible;
-  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.7));
+  overflow: hidden;
+  border-radius: 50%;
+  background:
+    url("../images/pirate-helm-reference.png") center / 108% 108% no-repeat;
+  isolation: isolate;
   transform-origin: 50% 50%;
   will-change: transform;
 }
 
-.scroll-steering .steering-rim {
-  fill: rgba(2, 8, 12, 0.72);
-  stroke: currentColor;
-  stroke-width: 9;
+.scroll-steering svg > * {
+  display: none;
 }
 
-.scroll-steering path {
+.scroll-steering .steering-shadow {
+  fill: rgba(5, 9, 12, 0.42);
+}
+
+.scroll-steering .steering-rim-outer {
+  fill: url(#pirateWood);
+  stroke: #2a170d;
+  stroke-width: 5;
+  filter: drop-shadow(2px 3px 1px rgba(0, 0, 0, 0.72));
+}
+
+.scroll-steering .steering-rim-inner {
   fill: none;
-  stroke: currentColor;
-  stroke-width: 7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke: #3a2012;
+  stroke-width: 4.2;
 }
 
-.scroll-steering .steering-grip {
-  stroke: #63d8f0;
-  stroke-width: 12;
+.scroll-steering .rim-grain path {
+  fill: none;
+  stroke: rgba(224, 167, 103, 0.38);
+  stroke-width: 0.65;
+  stroke-linecap: round;
+}
+
+.scroll-steering .rim-bolts circle {
+  fill: #302018;
+  stroke: #c28a50;
+  stroke-width: 0.55;
+}
+
+.scroll-steering .steering-spokes path {
+  fill: none;
+  stroke: url(#pirateWood);
+  stroke-width: 7.2;
+  stroke-linecap: round;
+  filter: drop-shadow(2px 2px 0 #2c160d) drop-shadow(-0.5px -0.5px 0 #c09258);
+}
+
+.scroll-steering .steering-handles rect {
+  fill: url(#pirateWood);
+  stroke: #2d180f;
+  stroke-width: 1.35;
+  filter: drop-shadow(1.5px 2px 1px rgba(0, 0, 0, 0.8));
+}
+
+.scroll-steering .rope-wrap {
+  fill: none;
+  stroke: #b5a16d;
+  stroke-width: 2.1;
+  stroke-dasharray: 1.2 1;
+  filter: drop-shadow(1px 1px 0 #47391f);
+}
+
+.scroll-steering .steering-hub-ring {
+  fill: #322117;
+  stroke: #b57a45;
+  stroke-width: 2.2;
+  filter: drop-shadow(0 2px 1px #160c08);
+}
+
+.scroll-steering .steering-hub-plates {
+  fill: #6f5a3f;
+  stroke: #b7a474;
+  stroke-width: 1.4;
 }
 
 .scroll-steering .steering-hub {
-  fill: #10191d;
-  stroke: #71ddec;
-  stroke-width: 4;
+  fill: url(#pirateHub);
+  stroke: #24170e;
+  stroke-width: 1.7;
+}
+
+.scroll-steering .hub-bolts circle {
+  fill: #2a1d14;
+  stroke: #caab6c;
+  stroke-width: 0.55;
 }
 
 .scroll-steering:hover {
-  border-color: #9ff1ff;
-  box-shadow:
-    0 16px 42px rgba(0, 0, 0, 0.62),
-    0 0 0 9px rgba(51, 163, 204, 0.13),
-    inset 0 0 20px rgba(93, 218, 239, 0.18);
+  filter:
+    drop-shadow(0 10px 11px rgba(0, 0, 0, 0.96))
+    drop-shadow(0 0 14px rgba(79, 190, 222, 0.5));
 }
 
 .scroll-steering:focus-visible {
   outline: 2px solid #91efff;
   outline-offset: 5px;
+}
+
+@media (max-width: 640px) {
+  .scroll-steering {
+    right: max(0.8rem, env(safe-area-inset-right));
+    bottom: max(0.8rem, env(safe-area-inset-bottom));
+    width: 88px;
+  }
 }
 
 /* Persistent map launcher and accessible map dialog */
@@ -2514,6 +2594,28 @@ code {
 }
 
 /* Seasonal dashboard shares the cinematic app's glass-card design. */
+.seasonal-open-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 1.1rem;
+  padding: 0.72rem 1rem;
+  color: var(--c-text);
+  background: linear-gradient(135deg, rgba(182, 232, 229, 0.16), rgba(185, 207, 238, 0.10));
+  border: 1px solid rgba(182, 232, 229, 0.32);
+  border-radius: 999px;
+  font: 700 0.82rem var(--ff-body);
+  text-decoration: none;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.seasonal-open-page:hover,
+.seasonal-open-page:focus-visible {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, rgba(182, 232, 229, 0.23), rgba(185, 207, 238, 0.16));
+  border-color: rgba(182, 232, 229, 0.55);
+}
+
 .seasonal-controls {
   display: flex;
   align-items: end;

@@ -43,7 +43,7 @@ internship_app/
 ├── backend/
 │   ├── app.py                      # Flask REST API Server & static router
 │   ├── models/
-│   │   ├── aqi_model.joblib        # Trained Gradient Boosting AQI Regressor (R² = 0.9988)
+│   │   ├── aqi_lstm.pt             # Trained PyTorch LSTM AQI Regressor
 │   │   ├── scaler.joblib           # Fitted StandardScaler on 13 features
 │   │   └── model_metadata.json     # Feature schema, metrics, and training provenance
 │   └── services/
@@ -89,12 +89,12 @@ internship_app/
   11. `DayOfWeek` (0–6)
   12. `Month` (1–12)
   13. `DayOfYear` (1–366)
-- **Model Framework:** Scikit-learn `HistGradientBoostingRegressor`
+- **Model Framework:** PyTorch `LSTM` (2 recurrent layers, 24-hour input sequence)
 - **Scaler:** `StandardScaler`
-- **Evaluation Results on 135,602 Test Samples:**
-  - **$R^2$ Score:** `0.9988`
-  - **Mean Absolute Error (MAE):** `1.357` AQI points
-  - **Root Mean Squared Error (RMSE):** `4.339` AQI points
+- **Evaluation Results on 12,000 Held-Out Sequences:**
+  - **$R^2$ Score:** `0.6618`
+  - **Mean Absolute Error (MAE):** `17.642` AQI points
+  - **Root Mean Squared Error (RMSE):** `33.714` AQI points
 
 ---
 

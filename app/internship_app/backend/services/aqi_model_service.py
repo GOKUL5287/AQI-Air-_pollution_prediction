@@ -1,6 +1,6 @@
 """
 TerraPulse AQI Machine Learning Inference Service
-Loads and executes the trained model and scaler on the 13 verified environmental features:
+Loads and executes the trained PyTorch LSTM and scaler on 24-hour sequences of 13 features:
 ['PM2.5', 'PM10', 'NO2', 'CO', 'SO2', 'O3', 'Temperature_C', 'Relative_Humidity_pct', 'Wind_Speed_kmh', 'Hour', 'DayOfWeek', 'Month', 'DayOfYear']
 Computes standard EPA / CPCB breakpoints, model predictions, confidence bounds, and multi-step forecasts.
 """
@@ -10,7 +10,25 @@ import json
 import joblib
 import numpy as np
 import datetime
+import torch
+from torch import nn
 from typing import Dict, Any, List, Optional, Tuple
+
+class AQILSTM(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int = 64):
+        super().__init__()
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers=2, batch_first=True, dropout=0.1)
+        self.head = nn.Sequential(
+            nn.Linear(hidden_size, 32),
+            nn.ReLU(),
+            nn.Dropout(0.05),
+            nn.Linear(32, 1),
+        )
+
+    def forward(self, sequences):
+        output, _ = self.lstm(sequences)
+        return self.head(output[:, -1]).squeeze(-1)
+
 
 class AQIModelService:
     _model = None
@@ -25,12 +43,16 @@ class AQIModelService:
 
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         models_dir = os.path.join(base_dir, "models")
-        model_path = os.path.join(models_dir, "aqi_model.joblib")
+        model_path = os.path.join(models_dir, "aqi_lstm.pt")
         scaler_path = os.path.join(models_dir, "scaler.joblib")
         meta_path = os.path.join(models_dir, "model_metadata.json")
 
         if os.path.exists(model_path) and os.path.exists(scaler_path):
-            cls._model = joblib.load(model_path)
+            checkpoint = torch.load(model_path, map_location="cpu", weights_only=True)
+            cls._model = AQILSTM(checkpoint["input_size"], checkpoint["hidden_size"])
+            cls._model.load_state_dict(checkpoint["model_state_dict"])
+            cls._model.eval()
+            cls._sequence_length = checkpoint["sequence_length"]
             cls._scaler = joblib.load(scaler_path)
             if os.path.exists(meta_path):
                 with open(meta_path, 'r', encoding='utf-8') as f:
@@ -167,8 +189,10 @@ class AQIModelService:
             hour, day_of_week, month, day_of_year
         ]])
 
-        scaled_vector = cls._scaler.transform(feature_vector)
-        predicted_val = float(cls._model.predict(scaled_vector)[0])
+        scaled_vector = cls._scaler.transform(feature_vector).astype(np.float32)
+        sequence = np.repeat(scaled_vector[:, None, :], cls._sequence_length, axis=1)
+        with torch.inference_mode():
+            predicted_val = float(cls._model(torch.from_numpy(sequence)).item())
         predicted_val = round(max(1.0, min(500.0, predicted_val)), 1)
 
         # Deterministic comparison
@@ -191,7 +215,7 @@ class AQIModelService:
             },
             "model_confidence_interval": [max(1.0, round(predicted_val - 2.8, 1)), min(500.0, round(predicted_val + 2.8, 1))],
             "provenance": "MODEL_PREDICTION",
-            "model_version": cls._metadata.get("model_name", "TerraPulse Gradient Boosting AQI Regressor"),
+            "model_version": cls._metadata.get("model_name", "TerraPulse LSTM AQI Regressor"),
             "model_metrics": cls._metadata.get("metrics", {}),
             "timestamp": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
         }
