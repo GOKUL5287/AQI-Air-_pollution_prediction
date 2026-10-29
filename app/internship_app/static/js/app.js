@@ -1478,18 +1478,33 @@ class TerraPulseApp {
           return;
         }
 
-        const times = tl.map(t => t.timestamp);
+        const chartRows = tl
+          .filter(point => Number.isFinite(Date.parse(point.timestamp)))
+          .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+        if (!chartRows.length) {
+          container.innerHTML = '<div class="chart-empty">Pollutant history has no valid timestamps.</div>';
+          return;
+        }
+
+        const times = chartRows.map(point => point.timestamp);
         container.innerHTML = '';
         Plotly.newPlot(container, [
-          { x: times, y: tl.map(t => t.aqi), name: 'AQI', mode: 'lines+markers', connectgaps: true, line: { color: '#e9edf5', width: 3 }, marker: { size: 4 } },
-          { x: times, y: tl.map(t => t.pm25), name: 'PM₂.₅', mode: 'lines', connectgaps: true, line: { color: '#ef4444', width: 2.5 } },
-          { x: times, y: tl.map(t => t.pm10), name: 'PM₁₀', mode: 'lines', connectgaps: true, line: { color: '#f97316', width: 2.5 } },
-          { x: times, y: tl.map(t => t.no2), name: 'NO₂', mode: 'lines', connectgaps: true, line: { color: '#38bdf8', width: 2 } },
-          { x: times, y: tl.map(t => t.o3), name: 'O₃', mode: 'lines', connectgaps: true, line: { color: '#10b981', width: 2 } }
+          { x: times, y: chartRows.map(t => t.aqi), name: 'AQI', mode: 'lines+markers', connectgaps: true, line: { color: '#e9edf5', width: 3 }, marker: { size: 4 } },
+          { x: times, y: chartRows.map(t => t.pm25), name: 'PM₂.₅', mode: 'lines', connectgaps: true, line: { color: '#ef4444', width: 2.5 } },
+          { x: times, y: chartRows.map(t => t.pm10), name: 'PM₁₀', mode: 'lines', connectgaps: true, line: { color: '#f97316', width: 2.5 } },
+          { x: times, y: chartRows.map(t => t.no2), name: 'NO₂', mode: 'lines', connectgaps: true, line: { color: '#38bdf8', width: 2 } },
+          { x: times, y: chartRows.map(t => t.o3), name: 'O₃', mode: 'lines', connectgaps: true, line: { color: '#10b981', width: 2 } }
         ], {
           ...base,
           title: { text: '24-hour AQI and pollutant history', font: { size: 15, color: '#d9e8ed' } },
-          xaxis: { ...base.xaxis, title: 'Hourly observations', type: 'date' },
+          xaxis: {
+            ...base.xaxis,
+            title: 'Hourly observations',
+            type: 'date',
+            range: [times[0], times[times.length - 1]],
+            autorange: false,
+            tickformat: '%b %d<br>%H:%M'
+          },
           yaxis: { ...base.yaxis, title: 'Concentration (µg/m³)', rangemode: 'tozero' }
         }, cfg);
 

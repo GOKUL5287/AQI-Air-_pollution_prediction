@@ -573,8 +573,10 @@ class AirQualityService:
                 columns=["StationId", "StationName", "City", "Datetime", "PM2.5", "PM10", "NO2", "CO", "SO2", "O3", "AQI"],
             )
             rows = history.loc[history["StationId"] == base["station_id"]]
+            station_match = not rows.empty
             if rows.empty:
                 rows = history.loc[history["StationName"] == base["station_name"]]
+                station_match = not rows.empty
             if rows.empty:
                 city = str(base.get("city", "")).strip().casefold()
                 city_names = history["City"].fillna("").str.casefold()
@@ -583,7 +585,20 @@ class AirQualityService:
                     city_token = city.split()[-1]
                     city_rows = history.loc[city_names.str.contains(city_token, regex=False)]
                 rows = city_rows
-            rows = rows.sort_values("Datetime").tail(hours).copy()
+            if station_match:
+                rows = rows.sort_values("Datetime").tail(hours).copy()
+            elif not rows.empty:
+                # A city fallback may contain one row per station for each hour.
+                # Aggregate by hour before limiting the timeline so timestamps
+                # remain a real hourly series instead of 24 same-hour station rows.
+                aggregate_columns = ["PM2.5", "PM10", "NO2", "CO", "SO2", "O3", "AQI"]
+                rows = (
+                    rows.groupby("Datetime", as_index=False)[aggregate_columns]
+                    .mean()
+                    .sort_values("Datetime")
+                    .tail(hours)
+                    .copy()
+                )
             pollutant_columns = ["PM2.5", "PM10", "NO2", "CO", "SO2", "O3"]
             rows[pollutant_columns] = rows[pollutant_columns].ffill().bfill()
             for _, row in rows.iterrows():
@@ -606,9 +621,12 @@ class AirQualityService:
                 "station_name": base["station_name"],
                 "horizon_hours": len(timeline),
                 "timeline": timeline,
-                "provenance": "HISTORICAL",
-                "provider": "Verified station-hour archive",
-                "status": "HISTORICAL_RECORDS"
+                "provenance": "HISTORICAL" if station_match else "HISTORICAL_CITY_AGGREGATE",
+                "provider": (
+                    "Verified station-hour archive" if station_match
+                    else "Verified station-hour city aggregate"
+                ),
+                "status": "HISTORICAL_RECORDS" if station_match else "HISTORICAL_CITY_AGGREGATE"
             }
 
         meas = base["measurements"]
