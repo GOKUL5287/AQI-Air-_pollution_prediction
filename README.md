@@ -8,6 +8,14 @@ This repository contains two related but separate applications and an experiment
 
 The code distinguishes observed measurements, external weather forecasts, historical records, fallback/demo values, deterministic AQI calculations, and ML predictions. A prediction should not be treated as an observed AQI reading.
 
+
+## 📎 Project Links
+
+| Resource | Link |
+|---|---|
+| 📄 Project Report | [View the report](https://drive.google.com/file/d/1wsny5j2U-9BAJS5EjmddqHKVVZ6i_m7n/view?usp=sharing) |
+| 🎥 Demo Video | [Watch the demo](https://drive.google.com/file/d/1ghdTti2g2004pKlMRjw6HrGr_AmQ9x8x/view?usp=drive_link) |
+
 ## Features
 
 - Flask API and web UI with geographic search, station selection, AQI prediction, forecast timelines, and health guidance.
